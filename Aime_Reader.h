@@ -12,8 +12,13 @@
 #elif defined(ESP32)
 #pragma message "当前的开发板是 ESP32"
 #define SerialDevice Serial
-#define LED_PIN 13
-#define PN532_SPI_SS 5
+#define LED_PIN 1
+//#define PN532_SPI_SS 5
+
+#elif defined(AIR001xx)
+#pragma message "当前的开发板是 AIR001"
+#define SerialDevice Serial
+//#define LED_PIN D5
 
 #else
 #error "未经测试的开发板，请检查串口和针脚定义"
@@ -35,9 +40,9 @@
 #define led_info "15084\xFF\x10\x00\x12"
 #endif
 
-#include "FastLED.h"
-#define NUM_LEDS 8
-CRGB leds[NUM_LEDS];
+//#include "FastLED.h"
+//#define NUM_LEDS 8
+//CRGB leds[NUM_LEDS];
 
 #if defined(PN532_SPI_SS)
 #pragma message "使用 SPI 连接 PN532"
@@ -196,8 +201,10 @@ packet_response_t res;
 
 uint8_t len, r, checksum;
 bool escape = false;
+uint8_t SERIALnum = 0;
 
 uint8_t packet_read() {
+  //while (SERIALnum != 0) {
   while (SerialDevice.available()) {
     r = SerialDevice.read();
     if (r == 0xE0) {
@@ -212,6 +219,7 @@ uint8_t packet_read() {
     }
     if (r == 0xD0) {
       escape = true;
+      //Serial.println("readOK");
       continue;
     }
     if (escape) {
@@ -220,9 +228,11 @@ uint8_t packet_read() {
     }
     req.bytes[++len] = r;
     if (len == req.frame_len && checksum == r) {
+      //Serial.printf("test");
       return req.cmd;
     }
     checksum += r;
+    SERIALnum = SERIALnum -1;
   }
   return 0;
 }
@@ -267,7 +277,7 @@ void sys_to_normal_mode() {
     res.status = ERROR_NFCRW_FIRMWARE_UP_TO_DATE;
   } else {
     res.status = ERROR_NFCRW_INIT_ERROR;
-    FastLED.showColor(0xFF0000);
+    //FastLED.showColor(0xFF0000);
   }
 }
 

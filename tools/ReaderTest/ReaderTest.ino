@@ -53,7 +53,7 @@ uint8_t blockData[1][16];
 
 void setup() {
   SerialDevice.begin(115200);
-  //  Wire.setClock(800000);
+   Wire.setClock(800000);
   while (!SerialDevice);
   nfc.begin();
   while (!nfc.getFirmwareVersion()) {
