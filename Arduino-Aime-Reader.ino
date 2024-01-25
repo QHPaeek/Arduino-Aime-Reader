@@ -2,15 +2,15 @@
 #include "Aime_Reader.h"
 
 void setup() {
-//  FastLED.addLeds<WS2812B, LED_PIN, GRB>(leds, NUM_LEDS);
-//  FastLED.setBrightness(50);
-//  FastLED.showColor(0);
+  LED_Init();
   nfc.begin();
   while (!nfc.getFirmwareVersion()) {
 //    FastLED.showColor(0xFF0000);
-    delay(500);
+      LED_show(0xff,0x00,0x00);
+      delay(500);
  //   FastLED.showColor(0);
- //   delay(500);
+      LED_show(0x00,0x00,0x00);
+      delay(500);
   }
   nfc.setPassiveActivationRetries(0x10);
   nfc.SAMConfig();
@@ -19,6 +19,7 @@ void setup() {
 
   SerialDevice.begin(baudrate);
 //  FastLED.showColor(BootColor);
+  LED_show(0x00,0xff,0x00);
 }
 
 void loop() {
@@ -79,6 +80,7 @@ void loop() {
     // LED
     case CMD_EXT_BOARD_LED_RGB:
 //      FastLED.showColor(CRGB(req.color_payload[0], req.color_payload[1], req.color_payload[2]));
+        LED_show(req.color_payload[0], req.color_payload[1],req.color_payload[2]);
       break;
 
     case CMD_EXT_BOARD_INFO:
