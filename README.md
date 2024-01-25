@@ -4,8 +4,6 @@
 
 本仓库为Fork仓库，支持更多的MCU以及开发板。（合宙Air001，以及陆续适配的其他型号）   
 
-
-
 - 支持卡片类型： [FeliCa](https://zh.wikipedia.org/wiki/FeliCa)（Amusement IC、Suica、八达通等）和 [MIFARE](https://zh.wikipedia.org/wiki/MIFARE)（Aime，Banapassport）
 - 逻辑实现是通过对官方读卡器串口数据进行分析猜测出来的，并非逆向，不保证正确实现
 - 通信数据格式参考了 [Segatools](https://github.com/djhackersdev/segatools) 和官方读卡器抓包数据，可在 [Example.txt](doc/Example.txt) 和 [nfc.txt](https://github.com/djhackersdev/segatools/blob/master/doc/nfc.txt) 查看
@@ -15,7 +13,7 @@
 
 1. 按照 [PN532](https://github.com/elechouse/PN532) 的提示安装库
 2. 按照使用方式，在 Arduino 和 PN532 接好连接线（I2C 或 SPI），并调整 PN532 上的拨码开关
-3. ~~接上 WS2812B 灯条（可选，不会影响正常读卡功能）~~灯光功能被移除
+3. ~~接上 WS2812B 灯条（可选，不会影响正常读卡功能）~~灯光功能暂时不可用，待修复
 4. 上传 [ReaderTest](tools/ReaderTest/ReaderTest.ino) 测试硬件是否工作正常
 5. 若读卡正常，可按照支持列表打开设备管理器设置 COM 端口号
 6. 按照游戏的波特率设置代码的`high_baudrate`选项，`115200`是`true`，`38400`是`false`
@@ -23,7 +21,7 @@
 8. 上传程序打开游戏测试
 
 如果需要自定义 Aime 卡，安装 [MifareClassicTool](https://github.com/ikarus23/MifareClassicTool)，修改 [Aime 卡示例](doc/aime示例.mct) 后写入空白 MIFARE UID/CUID 卡，即可刷卡使用。    
-~~~~某些 Arduino 可能需要在游戏主程序连接前给串口以正确的波特率发送 DTR/RTS，需要先打开一次 Arduino 串口监视器再启动主程序。  ~~~~ESP8266与Air001均不需要发送DTR/RTS。
+某些 Arduino 可能需要在游戏主程序连接前给串口以正确的波特率发送 DTR/RTS，需要先打开一次 Arduino 串口监视器再启动主程序。  ESP8266与Air001均不需要发送DTR/RTS。
 
 ### 支持游戏列表：
 
