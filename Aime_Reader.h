@@ -3,7 +3,7 @@
 #define SerialDevice SerialUSB
 #define NUM_LEDS 11
 #define LED_PIN A3
-#include "WS2812_FastLed.h"
+#include "lib/WS2812_FastLed.h"
 #define PN532_SPI_SS 10
 
 #elif defined(ESP8266)
@@ -12,14 +12,14 @@
 #define NUM_LEDS 11
 //#define LED_PIN D5 //NodeMCU 1.0(ESP12E-Mod)
 #define LED_PIN 14 //Generic ESP8266 Module
-#include "WS2812_FastLed.h"
+#include "lib/WS2812_FastLed.h"
 
 #elif defined(ESP32)
 #pragma message "当前的开发板是 ESP32"
 #define SerialDevice Serial
 #define NUM_LEDS 11
 #define LED_PIN 1
-#include "WS2812_FastLed.h"
+#include "lib/WS2812_FastLed.h"
 //#define PN532_SPI_SS 5
 
 #elif defined(AIR001xx)
@@ -28,17 +28,16 @@
 //LED灯的个数
 #define NUM_LEDS  11
 //LED引脚为PA7，不支持更改，不需要定义
-#include "WS2812_Air001.h"
+#include "lib/WS2812_Air001.h"
 
 #elif defined(STM32F1)
 #pragma message "当前的开发板是 STM32F1"
 //Generic STM32F1 series
 #define SerialDevice Serial
-//#define NUM_LEDS 11
-//#define LED_PIN 1
-//#include "WS2812_STM32.h"
-//STM32F103C6T6由于空间不足，无法使用LED功能，请将上三行注释方可通过编译。
-//STM32F103C8T6不受影响
+#define LED_PIN_RED 1
+#define LED_PIN_GREEN 2
+#define LED_PIN_BLUE 3
+#include "lib/LED_STM32.h"
 
 #else
 #error "未经测试的开发板，请检查串口和针脚定义"
@@ -47,6 +46,7 @@
 #ifdef high_baudrate
 #pragma message "high_baudrate 已启用"
 #define baudrate 115200
+#define baudrate_change_status 0xff99aa
 #define BootColor 0x0000FF
 #define fw_version "\x94"
 #define hw_version "837-15396"
@@ -115,8 +115,10 @@ enum {
   CMD_EXT_SEND_HEX_DATA = 0xf3,
   CMD_EXT_TO_BOOT_MODE = 0xf4,
   CMD_EXT_TO_NORMAL_MODE = 0xf5,
+  //自定义协议，用于上位机调整波特率
+  CMD_BAUDRATE_TO_LOW = 0xf6,
+  CMD_BAUDRATE_TO_HIGH = 0xf7,
 };
-
 enum {  // 未确认效果
   ERROR_NONE = 0,
   ERROR_NFCRW_INIT_ERROR = 1,
@@ -219,7 +221,6 @@ uint8_t len, r, checksum;
 bool escape = false;
 
 uint8_t packet_read() {
-  //while (SERIALnum != 0) {
   while (SerialDevice.available()) {
     r = SerialDevice.read();
     if (r == 0xE0) {

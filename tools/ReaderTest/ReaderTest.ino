@@ -12,6 +12,11 @@
 #define SerialDevice Serial
 #define PN532_SPI_SS 5
 
+#elif defined(STM32F1)
+#pragma message "当前的开发板是 STM32F1"
+//Generic STM32F1 series
+#define SerialDevice Serial
+
 #else
 #error "未经测试的开发板，请检查串口和阵脚定义"
 #endif
@@ -53,7 +58,7 @@ uint8_t blockData[1][16];
 
 void setup() {
   SerialDevice.begin(115200);
-   Wire.setClock(800000);
+   //Wire.setClock(800000);
   while (!SerialDevice);
   nfc.begin();
   while (!nfc.getFirmwareVersion()) {
