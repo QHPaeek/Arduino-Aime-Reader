@@ -1,6 +1,6 @@
 #include "SPI.h"
 
-void WS2812_send(unsigned char r, unsigned char g, unsigned char b) {
+void WS2812_send(uint8_t r, uint8_t g, uint8_t b) {
   unsigned char bits = 24;
   unsigned long value = 0x00000000;
   value = (((unsigned long)g << 16) | ((unsigned long)r << 8) | ((unsigned long)b));
@@ -29,7 +29,7 @@ void LED_show(uint8_t r, uint8_t g,uint8_t b)
 {
   for(uint8_t i = 0; i < NUM_LEDS ; i++)
   {
-    WS2812_send((unsigned char )r, (unsigned char) g, (unsigned char) b);
+    WS2812_send(r, g, b);
   }
 }
 

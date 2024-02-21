@@ -1,8 +1,18 @@
-#if defined(__AVR_ATmega32U4__) || defined(ARDUINO_SAMD_ZERO)
-#pragma message "当前的开发板是 ATmega32U4 或 SAMD_ZERO"
+#if defined(__AVR_ATmega32U4__)
+#pragma message "当前的开发板是 ATmega32U4"
 #define SerialDevice SerialUSB
 #define NUM_LEDS 11
 #define LED_PIN A3
+#define BOARD_VISION 1
+#include "lib/WS2812_FastLed.h"
+#define PN532_SPI_SS 10
+
+#elif defined(ARDUINO_SAMD_ZERO)
+#pragma message "当前的开发板是SAMD_ZERO"
+#define SerialDevice SerialUSB
+#define NUM_LEDS 11
+#define LED_PIN A3
+#define BOARD_VISION 2
 #include "lib/WS2812_FastLed.h"
 #define PN532_SPI_SS 10
 
@@ -12,6 +22,7 @@
 #define NUM_LEDS 11
 //#define LED_PIN D5 //NodeMCU 1.0(ESP12E-Mod)
 #define LED_PIN 14 //Generic ESP8266 Module
+#define BOARD_VISION 3
 #include "lib/WS2812_FastLed.h"
 
 #elif defined(ESP32)
@@ -19,6 +30,7 @@
 #define SerialDevice Serial
 #define NUM_LEDS 11
 #define LED_PIN 1
+#define BOARD_VISION 4
 #include "lib/WS2812_FastLed.h"
 //#define PN532_SPI_SS 5
 
@@ -28,6 +40,7 @@
 //LED灯的个数
 #define NUM_LEDS  11
 //LED引脚为PA7，不支持更改，不需要定义
+#define BOARD_VISION 5
 #include "lib/WS2812_Air001.h"
 
 #elif defined(STM32F1)
@@ -37,27 +50,28 @@
 #define LED_PIN_RED 1
 #define LED_PIN_GREEN 2
 #define LED_PIN_BLUE 3
+#define BOARD_VISION 6
 #include "lib/LED_STM32.h"
+#include "lib/CLOCK_STM32F103.h"
+
+#elif defined(STM32F0)
+#pragma message "当前的开发板是 STM32F0"
+//Generic STM32F1 series
+#define SerialDevice Serial
+#define LED_PIN_RED 1
+#define LED_PIN_GREEN 2
+#define LED_PIN_BLUE 3
+#define BOARD_VISION 7
+#include "lib/LED_STM32.h"
+
+#elif defined(ARDUINO_ARCH_RP2040)
+#pragma message "当前的开发板是 RP2040"
+#define SerialDevice Serial
+#define BOARD_VISION 8
+//#define LED_PIN D5
 
 #else
 #error "未经测试的开发板，请检查串口和针脚定义"
-#endif
-
-#ifdef high_baudrate
-#pragma message "high_baudrate 已启用"
-#define baudrate 115200
-#define baudrate_change_status 0xff99aa
-#define BootColor 0x0000FF
-#define fw_version "\x94"
-#define hw_version "837-15396"
-#define led_info "000-00000\xFF\x11\x40"
-
-#else
-#define baudrate 38400
-#define BootColor 0x00FF00
-#define fw_version "TN32MSEC003S F/W Ver1.2"
-#define hw_version "TN32MSEC003S H/W Ver3.0"
-#define led_info "15084\xFF\x10\x00\x12"
 #endif
 
 #if defined(PN532_SPI_SS)
@@ -75,6 +89,10 @@ PN532_I2C pn532(Wire);
 #include "PN532.h"
 PN532 nfc(pn532);
 uint8_t KeyA[6], KeyB[6];
+
+#include <EEPROM.h>
+uint8_t system_setting[3] = {0};
+uint8_t default_system_setting[3] = {0b00000110,128,3};
 
 enum {
   CMD_GET_FW_VERSION = 0x30,
@@ -115,10 +133,11 @@ enum {
   CMD_EXT_SEND_HEX_DATA = 0xf3,
   CMD_EXT_TO_BOOT_MODE = 0xf4,
   CMD_EXT_TO_NORMAL_MODE = 0xf5,
-  //自定义协议，用于上位机调整波特率
-  CMD_BAUDRATE_TO_LOW = 0xf6,
-  CMD_BAUDRATE_TO_HIGH = 0xf7,
+  //读卡器上位机功能
+  CMD_READ_EEPROM = 0xf6,
+  CMD_WRITE_EEPROM =0xf7,
 };
+
 enum {  // 未确认效果
   ERROR_NONE = 0,
   ERROR_NFCRW_INIT_ERROR = 1,
@@ -140,6 +159,7 @@ typedef union {
     union {
       uint8_t key[6];            // CMD_MIFARE_KEY_SET
       uint8_t color_payload[3];  // CMD_EXT_BOARD_LED_RGB
+      uint8_t eeprom_data[2];     //系统内部设置
       struct {                   // CMD_CARD_SELECT,AUTHORIZE,READ
         uint8_t uid[4];
         uint8_t block_no;
@@ -181,6 +201,10 @@ typedef union {
     union {
       uint8_t version[1];  // CMD_GET_FW_VERSION,CMD_GET_HW_VERSION,CMD_EXT_BOARD_INFO
       uint8_t block[16];   // CMD_MIFARE_READ
+      struct{
+        uint8_t eeprom_data[3];
+        uint8_t board_vision;
+      };
       struct {             // CMD_CARD_DETECT
         uint8_t count;
         uint8_t type;
@@ -219,6 +243,7 @@ packet_response_t res;
 
 uint8_t len, r, checksum;
 bool escape = false;
+uint8_t SERIALnum = 0;
 
 uint8_t packet_read() {
   while (SerialDevice.available()) {
@@ -235,6 +260,7 @@ uint8_t packet_read() {
     }
     if (r == 0xD0) {
       escape = true;
+      //Serial.println("readOK");
       continue;
     }
     if (escape) {
@@ -243,9 +269,11 @@ uint8_t packet_read() {
     }
     req.bytes[++len] = r;
     if (len == req.frame_len && checksum == r) {
+      //Serial.printf("test");
       return req.cmd;
     }
     checksum += r;
+    SERIALnum = SERIALnum -1;
   }
   return 0;
 }
@@ -291,23 +319,25 @@ void sys_to_normal_mode() {
   } else {
     res.status = ERROR_NFCRW_INIT_ERROR;
     //FastLED.showColor(0xFF0000);
-    LED_show(0xff,0x00,0x00);
   }
 }
 
 void sys_get_fw_version() {
+  std::string fw_version = system_setting[0] & 0b10 ? "\x94" : "TN32MSEC003S F/W Ver1.2";
   res_init(sizeof(fw_version) - 1);
-  memcpy(res.version, fw_version, res.payload_len);
+  memcpy(res.version, fw_version.c_str(), res.payload_len);
 }
 
 void sys_get_hw_version() {
+  std::string hw_version = system_setting[0] & 0b10 ? "837-15396" : "TN32MSEC003S H/W Ver3.0";
   res_init(sizeof(hw_version) - 1);
-  memcpy(res.version, hw_version, res.payload_len);
+  memcpy(res.version, hw_version.c_str(), res.payload_len);
 }
 
 void sys_get_led_info() {
+  std::string led_info = system_setting[0] & 0b10 ? "000-00000\xFF\x11\x40" : "15084\xFF\x10\x00\x12";
   res_init(sizeof(led_info) - 1);
-  memcpy(res.version, led_info, res.payload_len);
+  memcpy(res.version, led_info.c_str(), res.payload_len);
 }
 
 

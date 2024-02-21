@@ -1,66 +1,64 @@
-#define high_baudrate
 #include "Aime_Reader.h"
 
 void setup() {
-  SerialDevice.begin(baudrate);
-  //Serial.dtr(false); 
-  //delay(5000);
-  //Serial.print("1");
-  LED_Init();
-  //Serial.print("2");
-  nfc.begin();
-  //Serial.print("3");
-  while (!nfc.getFirmwareVersion()) {
-//    FastLED.showColor(0xFF0000);
-      LED_show(0xff,0x00,0x00);
-      delay(500);
- //   FastLED.showColor(0);
-      LED_show(0x00,0x00,0x00);
-      delay(500);
+  for(uint8_t i = 0;i<3;i++){
+    system_setting[i] = EEPROM.read(i);
   }
-  //Serial.print("4");
+  if(system_setting[0] & 1 == 1){
+    for(uint8_t i = 0;i<3;i++)  {
+    EEPROM.write(i, default_system_setting[i]);
+    system_setting[i] = default_system_setting[i];
+    }
+  }
+  #if defined(ARDUINO_ARCH_RP2040)
+  Serial.ignoreFlowControl();
+  Wire.setSDA(12);
+  Wire.setSCL(13);
+  #elif defined(STM32F1)
+  Serial.dtr(false); 
+  #endif
+  LED_Init();
+  nfc.begin();
+  while (!nfc.getFirmwareVersion()) {
+    delay(500);
+    if(system_setting[0] & 0b100){
+      LED_show(req.eeprom_data[1],0x00,0x00);
+    }
+  }
   nfc.setPassiveActivationRetries(0x10);
-  //Serial.print("5");
   nfc.SAMConfig();
- // Serial.print("6");
   memset(req.bytes, 0, sizeof(req.bytes));
   memset(res.bytes, 0, sizeof(res.bytes));
-
-//  FastLED.showColor(BootColor);
-  LED_show(0x00,0xff,0x00);
+  SerialDevice.begin((system_setting[0] & 0b10)? 115200 : 38400);
+  if(system_setting[0] & 0b100){
+    LED_show(0x00,0x00,(uint8_t)system_setting[1]);
+  }
 }
 
 void loop() {
   //SERIALnum = SerialDevice.available();
   switch (packet_read()) {
     case 0:
-      //SerialDevice.write(0xE0);
       break;
 
     case CMD_TO_NORMAL_MODE:
-    //SerialDevice.write(0xE0);
       sys_to_normal_mode();
       break;
     case CMD_GET_FW_VERSION:
-    //SerialDevice.write(0xE0);
       sys_get_fw_version();
       break;
     case CMD_GET_HW_VERSION:
-    //SerialDevice.write(0xE0);
       sys_get_hw_version();
       break;
 
     // Card read
     case CMD_START_POLLING:
-    //SerialDevice.write(0xE0);
       nfc_start_polling();
       break;
     case CMD_STOP_POLLING:
-    //SerialDevice.write(0xE0);
       nfc_stop_polling();
       break;
     case CMD_CARD_DETECT:
-    //SerialDevice.write(0xE0);
       nfc_card_detect();
       break;
 
@@ -94,7 +92,10 @@ void loop() {
 
     // LED
     case CMD_EXT_BOARD_LED_RGB:
-        LED_show(req.color_payload[0], req.color_payload[1],req.color_payload[2]);
+      if(system_setting[0] & 0b100){
+        LED_show((uint8_t)(req.color_payload[0]?system_setting[1]:0), (uint8_t)(req.color_payload[1]?system_setting[1]:0),(uint8_t)(req.color_payload[2]?system_setting[1]:0));
+        //LED_show(req.color_payload[0],req.color_payload[1],req.color_payload[2]);
+      }
       break;
 
     case CMD_EXT_BOARD_INFO:
@@ -104,13 +105,27 @@ void loop() {
     case CMD_EXT_BOARD_LED_RGB_UNKNOWN:
       break;
 
-    case CMD_BAUDRATE_TO_LOW:
-      Serial.write(baudrate_change_status);
-      Serial.begin(38400);
-
-    case CMD_BAUDRATE_TO_HIGH:
-      Serial.write(baudrate_change_status);
-      Serial.begin(115200);
+    case CMD_READ_EEPROM:
+      res_init();
+      res.payload_len = 4;
+      res.frame_len = 10;
+      for(uint8_t i = 0;i<3;i++){
+        res.eeprom_data[i] = system_setting[i];
+      }
+      res.board_vision = BOARD_VISION;
+      break;
+    
+    case CMD_WRITE_EEPROM:
+        system_setting[0] = req.eeprom_data[0] & 0xFE;
+        system_setting[1] = req.eeprom_data[1];
+        EEPROM.write(0, system_setting[0]);
+        EEPROM.write(1, system_setting[1]);
+        SerialDevice.begin((system_setting[0] & 0b10)? 115200 : 38400);
+        if (system_setting[0] & 0b100 != 0b100){
+          LED_show(0,0,0);
+        }
+      res_init();
+      break;
 
     default:
       res_init();
