@@ -31,6 +31,8 @@
 #define NUM_LEDS 11
 #define LED_PIN 1
 #define BOARD_VISION 4
+#define SDA_Pin 1   // select ESP32  I2C pins
+#define SCL_Pin 2
 #include "lib/WS2812_FastLed.h"
 //#define PN532_SPI_SS 5
 
@@ -69,6 +71,25 @@
 #define SerialDevice Serial
 #define BOARD_VISION 8
 //#define LED_PIN D5
+
+#elif defined(__AVR_ATmega328P__)
+#pragma message "当前的开发板是 ATmega328P"
+#define SerialDevice Serial
+#define NUM_LEDS 11
+#define LED_PIN 13
+#define BOARD_VISION 9
+#include "lib/WS2812_FastLed.h"
+
+#elif defined(ESP32S3)
+#pragma message "当前的开发板是 ESP32S3"
+#define SerialDevice Serial
+#define NUM_LEDS 11
+//#define LED_PIN D5 //NodeMCU 1.0(ESP12E-Mod)
+#define LED_PIN 0 //Generic ESP8266 Module
+#define BOARD_VISION 10
+#define SDA_Pin 1   // select ESP32  I2C pins
+#define SCL_Pin 2
+#include "lib/WS2812_FastLed.h"
 
 #else
 #error "未经测试的开发板，请检查串口和针脚定义"
@@ -260,7 +281,6 @@ uint8_t packet_read() {
     }
     if (r == 0xD0) {
       escape = true;
-      //Serial.println("readOK");
       continue;
     }
     if (escape) {
@@ -269,7 +289,6 @@ uint8_t packet_read() {
     }
     req.bytes[++len] = r;
     if (len == req.frame_len && checksum == r) {
-      //Serial.printf("test");
       return req.cmd;
     }
     checksum += r;
@@ -318,26 +337,26 @@ void sys_to_normal_mode() {
     res.status = ERROR_NFCRW_FIRMWARE_UP_TO_DATE;
   } else {
     res.status = ERROR_NFCRW_INIT_ERROR;
-    //FastLED.showColor(0xFF0000);
+    LED_show(req.eeprom_data[1],0x00,0x00);
   }
 }
 
 void sys_get_fw_version() {
-  std::string fw_version = system_setting[0] & 0b10 ? "\x94" : "TN32MSEC003S F/W Ver1.2";
+  const char* fw_version = (system_setting[0] & 0b10) ? "\x94" : "TN32MSEC003S F/W Ver1.2";
   res_init(sizeof(fw_version) - 1);
-  memcpy(res.version, fw_version.c_str(), res.payload_len);
+  memcpy(res.version, fw_version, res.payload_len);
 }
 
 void sys_get_hw_version() {
-  std::string hw_version = system_setting[0] & 0b10 ? "837-15396" : "TN32MSEC003S H/W Ver3.0";
+  const char* hw_version = (system_setting[0] & 0b10) ? "837-15396" : "TN32MSEC003S H/W Ver3.0";
   res_init(sizeof(hw_version) - 1);
-  memcpy(res.version, hw_version.c_str(), res.payload_len);
+  memcpy(res.version, hw_version, res.payload_len);
 }
 
 void sys_get_led_info() {
-  std::string led_info = system_setting[0] & 0b10 ? "000-00000\xFF\x11\x40" : "15084\xFF\x10\x00\x12";
+  const char* led_info = (system_setting[0] & 0b10) ? "000-00000\xFF\x11\x40" : "15084\xFF\x10\x00\x12";
   res_init(sizeof(led_info) - 1);
-  memcpy(res.version, led_info.c_str(), res.payload_len);
+  memcpy(res.version, led_info, res.payload_len);
 }
 
 

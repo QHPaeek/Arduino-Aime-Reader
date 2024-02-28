@@ -16,6 +16,8 @@ void setup() {
   Wire.setSCL(13);
   #elif defined(STM32F1)
   Serial.dtr(false); 
+  #elif defined(ESP32)
+  Wire.setPins(1,2);
   #endif
   LED_Init();
   nfc.begin();
@@ -33,10 +35,10 @@ void setup() {
   if(system_setting[0] & 0b100){
     LED_show(0x00,0x00,(uint8_t)system_setting[1]);
   }
+
 }
 
 void loop() {
-  //SERIALnum = SerialDevice.available();
   switch (packet_read()) {
     case 0:
       break;
@@ -94,7 +96,6 @@ void loop() {
     case CMD_EXT_BOARD_LED_RGB:
       if(system_setting[0] & 0b100){
         LED_show((uint8_t)(req.color_payload[0]?system_setting[1]:0), (uint8_t)(req.color_payload[1]?system_setting[1]:0),(uint8_t)(req.color_payload[2]?system_setting[1]:0));
-        //LED_show(req.color_payload[0],req.color_payload[1],req.color_payload[2]);
       }
       break;
 
@@ -122,7 +123,7 @@ void loop() {
         EEPROM.write(1, system_setting[1]);
         SerialDevice.begin((system_setting[0] & 0b10)? 115200 : 38400);
         if (system_setting[0] & 0b100 != 0b100){
-          LED_show(0,0,0);
+        LED_show(0,0,0);
         }
       res_init();
       break;

@@ -23,10 +23,7 @@
 
 如果需要自定义 Aime 卡，安装 [MifareClassicTool](https://github.com/ikarus23/MifareClassicTool)，修改 [Aime 卡示例](doc/aime示例.mct) 后写入空白 MIFARE UID/CUID 卡，即可刷卡使用。    
 
-
 波特率的概念：正确运行读卡器需要游戏，计算机本地端口，以及读卡器三个地方的设置全部一致才可以。游戏内的波特率一般是不可更改的，计算机本地端口的波特率可以在设置管理器里面修改，读卡器的波特率请通过[baudrate_tool](tools/BaudRateTool/baudrate_tool.exe)进行修改。只有三个设置全部一致才可以使用。
-
-
 
 使用CDC虚拟串口连接计算机的读卡器（STM32），或具有自适应波特率功能的读卡器不需要修改读卡器波特率，因为CDC具有无视波特率的特性。
 
@@ -47,17 +44,17 @@
 
 ### 开发板适配情况：
 
-| 开发板名                         | 主控                       | 备注                  |
-| ---------------------------- | ------------------------ | ------------------- |
-| SparkFun Pro Micro           | ATmega32U4               | 需要发送 DTR/RTS，未完全测试  |
-| SparkFun SAMD21 Dev Breakout | ATSAMD21G18              | 未完全测试               |
-| NodeMCU 1.0                  | ESP-12E + CP2102 & CH340 | CH340通讯，可能需要修改内部波特率 |
-| NodeMCU-32S                  | ESP32-S + CH340          | 主要适配环境              |
-| Arduino Uno                  | ATmega328P + CH340       | 未实际测试，据反馈不可用        |
-| Air001 Dev Chip              | Air001 + CH340           | CH340通讯，可能需要修改内部波特率 |
-| STM32  BulePill              | STM32F103C6T6/C8T6/CBT6  | 使用CDC链接,不需要修改波特率    |
-| STM32  F072                  | STM32F072C8T6            | 使用CDC链接,不需要修改波特率    |
-| Raspberry Pi Pico            | Raspberry RP2040         | 使用CDC链接,不需要修改波特率    |
+| 开发板名                         | 主控                       | 备注                                 |
+| ---------------------------- | ------------------------ | ---------------------------------- |
+| SparkFun Pro Micro           | ATmega32U4               | 需要发送 DTR/RTS，未完全测试                 |
+| SparkFun SAMD21 Dev Breakout | ATSAMD21G18              | 未完全测试                              |
+| NodeMCU 1.0                  | ESP-12E + CP2102 & CH340 | CH340通讯，可能需要修改内部波特率                |
+| NodeMCU-32S                  | ESP32-S + CH340          | 主要适配环境                             |
+| Arduino Uno                  | ATmega328P + CH340       | 可用，部分UNO板可能需要发送DTR/RTS，具体视实际使用硬件而定 |
+| Air001 Dev Chip              | Air001 + CH340           | CH340通讯，可能需要修改内部波特率                |
+| STM32  BulePill              | STM32F103C6T6/C8T6/CBT6  | 使用CDC链接,不需要修改波特率                   |
+| STM32  F072                  | STM32F072C8T6            | 使用CDC链接,不需要修改波特率                   |
+| Raspberry Pi Pico            | Raspberry RP2040         | 使用CDC链接,不需要修改波特率                   |
 
 ### 已知问题：
 

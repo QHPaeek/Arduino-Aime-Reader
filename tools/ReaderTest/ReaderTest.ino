@@ -1,36 +1,7 @@
-#if defined(__AVR_ATmega32U4__) || defined(ARDUINO_SAMD_ZERO)
-#pragma message "当前的开发板是 ATmega32U4 或 SAMD_ZERO"
-#define SerialDevice SerialUSB
-#define PN532_SPI_SS 10 //32U4 不使用 SPI 时，执行 ReadWithoutEncryption 会失败
-
-#elif defined(ARDUINO_ESP8266_NODEMCU_ESP12E)
-#pragma message "当前的开发板是 NODEMCU_ESP12E"
 #define SerialDevice Serial
-
-#elif defined(ARDUINO_NodeMCU_32S)
-#pragma message "当前的开发板是 NodeMCU_32S"
-#define SerialDevice Serial
-#define PN532_SPI_SS 5
-
-#elif defined(STM32F1)
-#pragma message "当前的开发板是 STM32F1"
-//Generic STM32F1 series
-#define SerialDevice Serial
-
-#else
-#error "未经测试的开发板，请检查串口和阵脚定义"
-#endif
-
-#if defined(PN532_SPI_SS)
-#pragma message "使用 SPI 连接 PN532"
-#include <SPI.h>
-#include <PN532_SPI.h>
-PN532_SPI pn532(SPI, PN532_SPI_SS);
-#else
 #include <Wire.h>
 #include <PN532_I2C.h>
 PN532_I2C pn532(Wire);
-#endif
 
 #include "PN532.h"
 PN532 nfc(pn532);
@@ -59,6 +30,7 @@ uint8_t blockData[1][16];
 void setup() {
   SerialDevice.begin(115200);
    //Wire.setClock(800000);
+   Wire.setPins(1,2);
   while (!SerialDevice);
   nfc.begin();
   while (!nfc.getFirmwareVersion()) {

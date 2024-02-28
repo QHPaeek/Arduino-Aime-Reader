@@ -5,8 +5,6 @@
 #include <windows.h>
 #include <conio.h>
 
-// 定义一些常量
-#define PORT_NAME "COM4" // 读卡器的端口号
 #define HIGH_BAUDRATE 115200 // 高波特率
 #define LOW_BAUDRATE 38400 // 低波特率
 #define DATA_LENGTH 12 // 回复数据的长度
@@ -14,10 +12,10 @@
 #define LED_MIN 2 // LED亮度的最小值
 #define LED_MAX 255 // LED亮度的最大值
 
-// 定义一些全局变量
 HANDLE hPort; // 串口句柄
 DCB dcb; // 串口参数结构体
 COMMTIMEOUTS timeouts; // 串口超时结构体
+char comPort[10];
 uint8_t send_buffer[8] = {0xE0, 0x06, 0x00, 0x00, 0xF6, 0x00, 0x00, 0xFC}; // 发送数据缓冲区
 uint8_t recv_buffer[DATA_LENGTH]; // 接收数据缓冲区
 uint8_t system_setting_buffer[2] = {0}; // 系统设置缓冲区
@@ -32,17 +30,17 @@ uint8_t hardware_version = 0; // 硬件版本号
 BOOL open_port()
 {
     // 打开串口
-    hPort = CreateFile(PORT_NAME, GENERIC_READ | GENERIC_WRITE, 0, NULL, OPEN_EXISTING, 0, NULL);
+    hPort = CreateFile(comPort, GENERIC_READ | GENERIC_WRITE, 0, NULL, OPEN_EXISTING, 0, NULL);
     if (hPort == INVALID_HANDLE_VALUE)
     {
-        printf("无法打开串口%s！\n", PORT_NAME);
+        printf("无法打开串口%s！\n", comPort);
         return FALSE;
     }
 
     // 获取串口参数
     if (!GetCommState(hPort, &dcb))
     {
-        printf("无法获取串口%s的参数！\n", PORT_NAME);
+        printf("无法获取串口%s的参数！\n", comPort);
         CloseHandle(hPort);
         return FALSE;
     }
@@ -54,7 +52,7 @@ BOOL open_port()
     dcb.StopBits = ONESTOPBIT; // 设置停止位为1
     if (!SetCommState(hPort, &dcb))
     {
-        printf("无法设置串口%s的参数！\n", PORT_NAME);
+        printf("无法设置串口%s的参数！\n", comPort);
         CloseHandle(hPort);
         return FALSE;
     }
@@ -62,7 +60,7 @@ BOOL open_port()
     // 获取串口超时
     if (!GetCommTimeouts(hPort, &timeouts))
     {
-        printf("无法获取串口%s的超时！\n", PORT_NAME);
+        printf("无法获取串口%s的超时！\n", comPort);
         CloseHandle(hPort);
         return FALSE;
     }
@@ -75,7 +73,7 @@ BOOL open_port()
     timeouts.WriteTotalTimeoutMultiplier = 10; // 设置写入总超时乘数为10毫秒
     if (!SetCommTimeouts(hPort, &timeouts))
     {
-        printf("无法设置串口%s的超时！\n", PORT_NAME);
+        printf("无法设置串口%s的超时！\n", comPort);
         CloseHandle(hPort);
         return FALSE;
     }
@@ -98,13 +96,13 @@ BOOL send_data(int length)
     // 写入数据
     if (!WriteFile(hPort, send_buffer, length, &bytes_written, NULL))
     {
-        printf("无法向串口%s写入数据！\n", PORT_NAME);
+        printf("无法向串口%s写入数据！\n", comPort);
         return FALSE;
     }
     // 检查写入的字节数是否正确
     if (bytes_written != length)
     {
-        printf("向串口%s写入数据不完整！\n", PORT_NAME);
+        printf("向串口%s写入数据不完整！\n", comPort);
         return FALSE;
     }
     // 返回成功
@@ -118,13 +116,13 @@ BOOL recv_data(int length)
     // 读取数据
     if (!ReadFile(hPort, recv_buffer, length, &bytes_read, NULL))
     {
-        printf("无法从串口%s读取数据！\n", PORT_NAME);
+        printf("无法从串口%s读取数据！\n", comPort);
         return FALSE;
     }
     // 检查读取的字节数是否正确
     if (bytes_read != length)
     {
-        //printf("从串口%s读取数据不完整！\n", PORT_NAME);
+        //printf("从串口%s读取数据不完整！\n", comPort);
         return FALSE;
     }
     // 返回成功
@@ -214,14 +212,14 @@ BOOL change_baudrate(int baudrate)
     // 获取串口参数
     if (!GetCommState(hPort, &dcb))
     {
-        printf("无法获取串口%s的参数！\n", PORT_NAME);
+        printf("无法获取串口%s的参数！\n", comPort);
         return FALSE;
     }
     // 设置串口参数
     dcb.BaudRate = baudrate; // 设置波特率
     if (!SetCommState(    hPort, &dcb))
     {
-        printf("无法设置串口%s的参数！\n", PORT_NAME);
+        printf("无法设置串口%s的参数！\n", comPort);
         return FALSE;
     }
     // 返回成功
@@ -262,12 +260,23 @@ int get_user_input_number(char *prompt)
 // 主函数
 int main()
 {
-    // 打印语句”请将读卡器的端口号改为COM4，按任意键继续“
 printf("本工具用于修改Aime读卡器内部设置，源代码见https://github.com/QHPaeek/Arduino-Aime-Reader\n");
 printf("读卡器EEPROM寿命有限，请不要频繁修改！\n");
-    printf("请将读卡器的端口号改为COM4，按任意键继续\n");
-    // 等待用户按下任意按键
-    getch();
+int ports;
+while(1)
+{
+	ports = get_user_input_number("请输入读卡器的端口号（例如com4请输入数字4）按下回车继续：");
+	if (ports < 0){
+		printf("请输入有效的数字！");
+		continue;
+	}
+	if(ports > 9 ){
+	snprintf(comPort, sizeof(comPort), "\\\\.\\COM%d", ports);
+	break;
+	}
+	snprintf(comPort, sizeof(comPort), "COM%d", ports);
+	break;
+}
     // 打开串口
     if (!open_port())
     {
@@ -453,10 +462,18 @@ else
     send_buffer[7] = system_setting_buffer[1]; // 第八个字节为system_setting_buffer[1]
     send_buffer[8] = 0x00; // 第九个字节为0
     send_buffer[9] = 8 + 0xF7 + 2 + system_setting_buffer[0] + system_setting_buffer[1]; // 第十个字节为校验位
-	DWORD bytes_written;
-    WriteFile(hPort, send_buffer,10, &bytes_written, NULL);
-Sleep(4);
-    // 改变串口波特率，如果第8步中用户选择了y，那么将串口的波特率改变为115200，否则改变为38400
+DWORD bytes_written;
+//OVERLAPPED osWrite = {0};
+//osWrite.hEvent = CreateEvent(NULL, TRUE, FALSE, NULL);
+//   if (osWrite.hEvent == NULL){
+      // error creating overlapped event handle
+//      return FALSE;}
+//WriteFile(hPort, send_buffer,10, &bytes_written, &osWrite);
+WriteFile(hPort, send_buffer,10, &bytes_written, NULL);
+Sleep(3);
+//GetOverlappedResult(hPort, &osWrite, &bytes_written, TRUE);
+ // 等待串口数据发送完成
+// 改变串口波特率，如果第8步中用户选择了y，那么将串口的波特率改变为115200，否则改变为38400
     if (change_highbaudrate_mode)
     {
         // 用户选择了高波特率模式，设置波特率为115200
@@ -470,8 +487,7 @@ Sleep(4);
     // 监听COM4端口，如果收到回复{E0 06 00 00 F7 00 00 FD}，则提示用户”修改成功！按任意键退出“，等待用户按下任意键退出程序。如果没有收到回复，或者回复的第一个字节不是E0，则提示”修改失败！按任意键退出“，等待用户按下任意键退出程序。
     if (!recv_data(8))
     {
-        // 接收失败，提示”修改失败！按任意键退出“，关闭串口，等待用户按下任意键退出程序
-        printf("修改失败！按任意键退出\n");
+        printf("修改失败！未接收到数据，按任意键退出\n");
         close_port();
         getch();
         return -1;
@@ -479,7 +495,6 @@ Sleep(4);
     // 检查回复是否正确
     if (recv_buffer[0] == 0xE0 && recv_buffer[1] == 0x06 && recv_buffer[2] == 0x00 && recv_buffer[3] == 0x00 && recv_buffer[4] == 0xF7 && recv_buffer[5] == 0x00 && recv_buffer[6] == 0x00 && recv_buffer[7] == 0xFD)
     {
-        // 回复正确，提示”修改成功！按任意键退出“，关闭串口，等待用户按下任意键退出程序
         printf("修改成功！按任意键退出\n");
         close_port();
         getch();
@@ -487,8 +502,7 @@ Sleep(4);
     }
     else
     {
-        // 回复错误，提示”修改失败！按任意键退出“，关闭串口，等待用户按下任意键退出程序
-        printf("修改失败！按任意键退出\n");
+        printf("修改失败！接收数据错误，按任意键退出\n");
         close_port();
         getch();
         return -1;
