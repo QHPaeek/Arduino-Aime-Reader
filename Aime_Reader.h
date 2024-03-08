@@ -157,7 +157,8 @@ enum {
   CMD_EXT_TO_NORMAL_MODE = 0xf5,
   //读卡器上位机功能
   CMD_READ_EEPROM = 0xf6,
-  CMD_WRITE_EEPROM =0xf7,
+  CMD_WRITE_EEPROM = 0xf7,
+  CMD_SW_READTEST_MODE = 0xf8,
 };
 
 enum {  // 未确认效果

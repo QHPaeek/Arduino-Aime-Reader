@@ -172,7 +172,7 @@ void print_data()
     printf("高波特率模式：%s\n", high_baudrate_mode ? "是" : "否");
     printf("LED启用：%s\n", led_enabled ? "是" : "否");
     printf("LED亮度：%d\n", led_brightness);
-    printf("固件版本：%d\n", firmware_version);
+    printf("固件版本：v%d\n", firmware_version);
 	switch(hardware_version)
 	{
 		case 1:
@@ -331,16 +331,21 @@ while(1)
     }
     // 打印数据
     print_data();
-    // 打印语句”否修改读卡器设置？输入y继续，输入n退出“，输入y或者Y则继续，输入n或者N则直接关闭程序，输入其他内容则提示用户”请重新输入！“
-    char choice; // 用户的选择
+    char choice; 
+uint8_t mode_sw = 0;
     while (1)
     {
         // 获取用户输入
-        choice = get_user_input("是否修改读卡器设置？输入y继续，输入n退出\n");
+        choice = get_user_input("输入1修改读卡器设置，输入2进入读卡测试模式（固件V5版本以下不支持，读卡器断电后即退出），输入n退出\n");
         // 判断用户输入
-        if (choice == 'y' || choice == 'Y')
+        if (choice == '1' )
         {
-            // 输入y或者Y，跳出循环，继续程序
+	mode_sw = 1;
+            break;
+        }
+        else if (choice == '2' )
+        {
+	mode_sw = 2;
             break;
         }
         else if (choice == 'n' || choice == 'N')
@@ -356,6 +361,7 @@ while(1)
         }
     }
     // 如果用户选择继续，则先根据前面读到的设置中”读卡器是否工作在高波特率模式“选择电脑端口的发送波特率，是则为115200，否则为38400。
+if (mode_sw == 1){
     if (high_baudrate_mode)
     {
         // 高波特率模式，设置波特率为115200
@@ -501,4 +507,37 @@ while((WriteFile(hPort, send_buffer,10, &bytes_written, NULL) == FALSE));
         getch();
         return -1;
     }
+}
+else{
+	if (high_baudrate_mode)
+    {
+        if (!change_baudrate(HIGH_BAUDRATE))
+        {  
+            close_port();
+            getch();
+            return -1;
+        }
+    }
+    else
+    {
+        if (!change_baudrate(LOW_BAUDRATE))
+        {
+            close_port();
+            getch();
+            return -1;
+        }
+    }
+DWORD bytes_written;
+char buffer[1024];
+DWORD bytesRead;
+uint8_t send_buffer_readtest_cmd[8] = {0xe0,0x06,0x00 ,0x00,0xF8,0x00,0x00,0xFE};
+while((WriteFile(hPort, send_buffer_readtest_cmd,8, &bytes_written, NULL) == FALSE));
+ while (1) {
+        while(ReadFile(hPort, buffer, sizeof(buffer), &bytesRead, NULL) == FALSE);
+	system("cls");
+        for (DWORD i = 0; i < bytesRead; i++) {
+            printf("%c", buffer[i]);
+        }
+    }
+}
 }
