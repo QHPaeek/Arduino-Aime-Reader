@@ -4,7 +4,7 @@ void setup() {
   for(uint8_t i = 0;i<3;i++){
     system_setting[i] = EEPROM.read(i);
   }
-  if(system_setting[0] & 1 == 1){
+  if(!(system_setting[2]) || (system_setting[2] == 0xff)){
     for(uint8_t i = 0;i<3;i++)  {
     EEPROM.write(i, default_system_setting[i]);
     system_setting[i] = default_system_setting[i];
@@ -23,8 +23,8 @@ void setup() {
   nfc.begin();
   while (!nfc.getFirmwareVersion()) {
     delay(500);
-    if(system_setting[0] & 0b100){
-      LED_show(req.eeprom_data[1],0x00,0x00);
+    if((system_setting[0] & 0b100)){
+      LED_show(system_setting[1],0x00,0x00);
     }
   }
   nfc.setPassiveActivationRetries(0x10);
@@ -32,17 +32,34 @@ void setup() {
   memset(req.bytes, 0, sizeof(req.bytes));
   memset(res.bytes, 0, sizeof(res.bytes));
   SerialDevice.begin((system_setting[0] & 0b10)? 115200 : 38400);
-  if(system_setting[0] & 0b100){
-    LED_show(0x00,0x00,(uint8_t)system_setting[1]);
+  if(!(system_setting[0] & 0b100)){
+    LED_buffer[0] = 0;
+    LED_buffer[1] = 0;
+    LED_buffer[2] = 0;
   }
-
+  else if (system_setting[0] & 0b10){
+    //LED_show(0x00,0x00,(uint8_t)system_setting[1]);
+    LED_buffer[0] = 0;
+    LED_buffer[1] = 0;
+    LED_buffer[2] = system_setting[1];
+  }
+  else{
+    LED_buffer[0] = 0;
+    LED_buffer[1] = system_setting[1];
+    LED_buffer[2] = 0;
+  }
 }
 
 void loop() {
+  if (!(system_setting[0] & 0b100)){
+    LED_show(0,0,0);
+  }
+  else{
+    LED_show((uint8_t)LED_buffer[0],(uint8_t)LED_buffer[1],(uint8_t)LED_buffer[2]);
+  }
   switch (packet_read()) {
     case 0:
       break;
-
     case CMD_TO_NORMAL_MODE:
       sys_to_normal_mode();
       break;
@@ -94,9 +111,9 @@ void loop() {
 
     // LED
     case CMD_EXT_BOARD_LED_RGB:
-      if(system_setting[0] & 0b100){
-        LED_show((uint8_t)(req.color_payload[0]?system_setting[1]:0), (uint8_t)(req.color_payload[1]?system_setting[1]:0),(uint8_t)(req.color_payload[2]?system_setting[1]:0));
-      }
+        LED_buffer[0] = req.color_payload[0]?system_setting[1]:0;
+        LED_buffer[1] = req.color_payload[1]?system_setting[1]:0;
+        LED_buffer[2] = req.color_payload[2]?system_setting[1]:0;
       break;
 
     case CMD_EXT_BOARD_INFO:
@@ -117,19 +134,32 @@ void loop() {
       break;
     
     case CMD_WRITE_EEPROM:
-        system_setting[0] = req.eeprom_data[0] & 0xFE;
-        system_setting[1] = req.eeprom_data[1];
-        EEPROM.write(0, system_setting[0]);
-        EEPROM.write(1, system_setting[1]);
-        SerialDevice.begin((system_setting[0] & 0b10)? 115200 : 38400);
-        if (system_setting[0] & 0b100 != 0b100){
-        LED_show(0,0,0);
+      system_setting[0] = req.eeprom_data[0];
+      system_setting[1] = req.eeprom_data[1];
+      EEPROM.write(0, system_setting[0]);
+      EEPROM.write(1, system_setting[1]);
+      SerialDevice.begin((system_setting[0] & 0b10)? 115200 : 38400);
+      if(!(system_setting[0] & 0b100)){
+        LED_buffer[0] = 0;
+        LED_buffer[1] = 0;
+        LED_buffer[2] = 0;
+       }
+      else if (system_setting[0] & 0b10){
+        LED_buffer[0] = 0;
+        LED_buffer[1] = 0;
+        LED_buffer[2] = system_setting[1];
         }
+      else{
+        LED_buffer[0] = 0;
+        LED_buffer[1] = system_setting[1];
+        LED_buffer[2] = 0;
+      }
       res_init();
       break;
 
     default:
       res_init();
+      break;
   }
   packet_write();
 }

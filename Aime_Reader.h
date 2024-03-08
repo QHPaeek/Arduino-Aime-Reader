@@ -113,7 +113,8 @@ uint8_t KeyA[6], KeyB[6];
 
 #include <EEPROM.h>
 uint8_t system_setting[3] = {0};
-uint8_t default_system_setting[3] = {0b00000110,128,3};
+uint8_t default_system_setting[3] = {0b10000110,128,4};
+uint8_t LED_buffer[3] = {0};
 
 enum {
   CMD_GET_FW_VERSION = 0x30,
@@ -264,7 +265,6 @@ packet_response_t res;
 
 uint8_t len, r, checksum;
 bool escape = false;
-uint8_t SERIALnum = 0;
 
 uint8_t packet_read() {
   while (SerialDevice.available()) {
@@ -292,7 +292,6 @@ uint8_t packet_read() {
       return req.cmd;
     }
     checksum += r;
-    SERIALnum = SERIALnum -1;
   }
   return 0;
 }
@@ -337,26 +336,50 @@ void sys_to_normal_mode() {
     res.status = ERROR_NFCRW_FIRMWARE_UP_TO_DATE;
   } else {
     res.status = ERROR_NFCRW_INIT_ERROR;
-    LED_show(req.eeprom_data[1],0x00,0x00);
+    LED_buffer[0] = system_setting[1];
+    LED_buffer[1] = 0;
+    LED_buffer[2] = 0;
   }
 }
 
 void sys_get_fw_version() {
-  const char* fw_version = (system_setting[0] & 0b10) ? "\x94" : "TN32MSEC003S F/W Ver1.2";
-  res_init(sizeof(fw_version) - 1);
-  memcpy(res.version, fw_version, res.payload_len);
+  if(system_setting[0] & 0b10){
+    const char fw_version[2] = "\x94";
+    res_init(sizeof(fw_version) - 1);
+    memcpy(res.version, fw_version, res.payload_len);
+  }
+  else{
+    const char fw_version[24] = "TN32MSEC003S F/W Ver1.2";
+    res_init(sizeof(fw_version) - 1);
+    memcpy(res.version, fw_version, res.payload_len);
+  }
 }
 
 void sys_get_hw_version() {
-  const char* hw_version = (system_setting[0] & 0b10) ? "837-15396" : "TN32MSEC003S H/W Ver3.0";
-  res_init(sizeof(hw_version) - 1);
-  memcpy(res.version, hw_version, res.payload_len);
+  if(system_setting[0] & 0b10){
+    const char hw_version[10] = "837-15396";
+    res_init(sizeof(hw_version) - 1);
+    memcpy(res.version, hw_version, res.payload_len);
+  }
+  else{
+    const char hw_version[24] = "TN32MSEC003S H/W Ver3.0";
+    res_init(sizeof(hw_version) - 1);
+    memcpy(res.version, hw_version, res.payload_len);
+  }
+
 }
 
 void sys_get_led_info() {
-  const char* led_info = (system_setting[0] & 0b10) ? "000-00000\xFF\x11\x40" : "15084\xFF\x10\x00\x12";
-  res_init(sizeof(led_info) - 1);
-  memcpy(res.version, led_info, res.payload_len);
+  if(system_setting[0] & 0b10){
+    const char led_info[13] = "000-00000\xFF\x11\x40";
+    res_init(sizeof(led_info) - 1);
+    memcpy(res.version, led_info, res.payload_len);
+  }
+  else{
+    const char led_info[10] = "15084\xFF\x10\x00\x12";
+    res_init(sizeof(led_info) - 1);
+    memcpy(res.version, led_info, res.payload_len);
+  }
 }
 
 

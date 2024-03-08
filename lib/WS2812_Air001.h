@@ -31,6 +31,7 @@ void LED_show(uint8_t r, uint8_t g,uint8_t b)
   {
     WS2812_send(r, g, b);
   }
+  delayMicroseconds(60);
 }
 
 void LED_Init(){
