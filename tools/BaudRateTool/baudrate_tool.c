@@ -1,3 +1,5 @@
+//作者：Qinh
+//用AI写的
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdint.h>
@@ -463,15 +465,7 @@ else
     send_buffer[8] = 0x00; // 第九个字节为0
     send_buffer[9] = 8 + 0xF7 + 2 + system_setting_buffer[0] + system_setting_buffer[1]; // 第十个字节为校验位
 DWORD bytes_written;
-//OVERLAPPED osWrite = {0};
-//osWrite.hEvent = CreateEvent(NULL, TRUE, FALSE, NULL);
-//   if (osWrite.hEvent == NULL){
-      // error creating overlapped event handle
-//      return FALSE;}
-//WriteFile(hPort, send_buffer,10, &bytes_written, &osWrite);
-WriteFile(hPort, send_buffer,10, &bytes_written, NULL);
-Sleep(3);
-//GetOverlappedResult(hPort, &osWrite, &bytes_written, TRUE);
+while((WriteFile(hPort, send_buffer,10, &bytes_written, NULL) == FALSE));
  // 等待串口数据发送完成
 // 改变串口波特率，如果第8步中用户选择了y，那么将串口的波特率改变为115200，否则改变为38400
     if (change_highbaudrate_mode)
