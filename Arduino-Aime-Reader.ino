@@ -38,6 +38,8 @@ void setup() {
   Wire.setSCL(13);
   #elif defined(STM32F1)
   Serial.dtr(false); 
+  #elif defined(STM32F0)
+  Serial.dtr(false); 
   #elif defined(ESP32)
   Wire.setPins(1,2);
   #endif
@@ -65,6 +67,7 @@ void setup() {
     LED_buffer[0] = 0;
     LED_buffer[1] = 0;
     LED_buffer[2] = system_setting[1];
+
   }
   else{
     LED_buffer[0] = 0;

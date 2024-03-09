@@ -49,22 +49,21 @@
 #pragma message "当前的开发板是 STM32F1"
 //Generic STM32F1 series
 #define SerialDevice Serial
-#define LED_PIN_RED 1
-#define LED_PIN_GREEN 2
-#define LED_PIN_BLUE 3
+#define LED_PIN_RED PB1
+#define LED_PIN_GREEN PB11
+#define LED_PIN_BLUE PB10
 #define BOARD_VISION 6
-#include "lib/LED_STM32.h"
-#include "lib/CLOCK_STM32F103.h"
+#include "lib/LED_PWM.h"
 
 #elif defined(STM32F0)
 #pragma message "当前的开发板是 STM32F0"
 //Generic STM32F1 series
 #define SerialDevice Serial
-#define LED_PIN_RED 1
-#define LED_PIN_GREEN 2
-#define LED_PIN_BLUE 3
+#define LED_PIN_RED PB1
+#define LED_PIN_GREEN PB11
+#define LED_PIN_BLUE PB10
 #define BOARD_VISION 7
-#include "lib/LED_STM32.h"
+#include "lib/LED_PWM.h"
 
 #elif defined(ARDUINO_ARCH_RP2040)
 #pragma message "当前的开发板是 RP2040"
