@@ -23,15 +23,21 @@ uint8_t blockData[1][16];
 bool Reader_Test_Mode = false;
 
 void setup() {
+  #if defined(ESP8266)
+  EEPROM.begin(4);
+  #endif
   for(uint8_t i = 0;i<3;i++){
     system_setting[i] = EEPROM.read(i);
   }
-  if(!(system_setting[2]) || (system_setting[2] == 0xff)){
+  if((system_setting[2] == 0) || (system_setting[2] == 0xff)){
     for(uint8_t i = 0;i<3;i++)  {
     EEPROM.write(i, default_system_setting[i]);
     system_setting[i] = default_system_setting[i];
     }
   }
+  #if defined(ESP8266)
+  EEPROM.commit();
+  #endif
   #if defined(ARDUINO_ARCH_RP2040)
   Serial.ignoreFlowControl();
   Wire.setSDA(12);
@@ -43,6 +49,7 @@ void setup() {
   #elif defined(ESP32)
   Wire.setPins(1,2);
   #endif
+  SerialDevice.begin((system_setting[0] & 0b10)? 115200 : 38400);
   LED_Init();
   nfc.begin();
   while (!nfc.getFirmwareVersion()) {
@@ -56,7 +63,6 @@ void setup() {
   nfc.SAMConfig();
   memset(req.bytes, 0, sizeof(req.bytes));
   memset(res.bytes, 0, sizeof(res.bytes));
-  SerialDevice.begin((system_setting[0] & 0b10)? 115200 : 38400);
   if(!(system_setting[0] & 0b100)){
     LED_buffer[0] = 0;
     LED_buffer[1] = 0;
@@ -232,13 +238,11 @@ void loop() {
         system_setting[1] = req.eeprom_data[1];
         EEPROM.write(0, system_setting[0]);
         EEPROM.write(1, system_setting[1]);
+        #if defined(ESP8266)
+        EEPROM.commit();
+        #endif
         SerialDevice.begin((system_setting[0] & 0b10)? 115200 : 38400);
-        if(!(system_setting[0] & 0b100)){
-         LED_buffer[0] = 0;
-         LED_buffer[1] = 0;
-          LED_buffer[2] = 0;
-        }
-       else if (system_setting[0] & 0b10){
+       if (system_setting[0] & 0b10){
          LED_buffer[0] = 0;
          LED_buffer[1] = 0;
          LED_buffer[2] = system_setting[1];
@@ -248,6 +252,12 @@ void loop() {
           LED_buffer[1] = system_setting[1];
          LED_buffer[2] = 0;
         }
+        if(!(system_setting[0] & 0b100)){
+         LED_buffer[0] = 0;
+         LED_buffer[1] = 0;
+         LED_buffer[2] = 0;
+        }
+        delay(1);
         res_init();
         break;
       case CMD_SW_READTEST_MODE:

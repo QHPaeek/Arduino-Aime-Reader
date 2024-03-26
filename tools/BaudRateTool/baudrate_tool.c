@@ -219,7 +219,7 @@ BOOL change_baudrate(int baudrate)
     }
     // 设置串口参数
     dcb.BaudRate = baudrate; // 设置波特率
-    if (!SetCommState(    hPort, &dcb))
+    if (!SetCommState(hPort, &dcb))
     {
         printf("无法设置串口%s的参数！\n", comPort);
         return FALSE;
@@ -469,9 +469,12 @@ else
     send_buffer[6] = system_setting_buffer[0]; // 第七个字节为system_setting_buffer[0]
     send_buffer[7] = system_setting_buffer[1]; // 第八个字节为system_setting_buffer[1]
     send_buffer[8] = 0x00; // 第九个字节为0
-    send_buffer[9] = 8 + 0xF7 + 2 + system_setting_buffer[0] + system_setting_buffer[1]; // 第十个字节为校验位
+uint16_t checksum_cmd = 0x08 + 0xF7 + 0x02 + system_setting_buffer[0] + system_setting_buffer[1];
+    send_buffer[9] = 0; // 第十个字节为校验位
+send_buffer[9] = checksum_cmd & 0b11111111;
 DWORD bytes_written;
-while((WriteFile(hPort, send_buffer,10, &bytes_written, NULL) == FALSE));
+WriteFile(hPort, send_buffer,10, &bytes_written, NULL);
+Sleep(3);
  // 等待串口数据发送完成
 // 改变串口波特率，如果第8步中用户选择了y，那么将串口的波特率改变为115200，否则改变为38400
     if (change_highbaudrate_mode)

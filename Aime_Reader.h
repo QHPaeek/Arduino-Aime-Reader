@@ -112,7 +112,7 @@ uint8_t KeyA[6], KeyB[6];
 
 #include <EEPROM.h>
 uint8_t system_setting[3] = {0};
-uint8_t default_system_setting[3] = {0b10000110,128,4};
+uint8_t default_system_setting[3] = {0b10000110,128,6};
 uint8_t LED_buffer[3] = {0};
 
 enum {
