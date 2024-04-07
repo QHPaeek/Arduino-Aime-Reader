@@ -6,6 +6,8 @@
 #include <string.h>
 #include <windows.h>
 #include <conio.h>
+#include <stdbool.h>
+#include <ctype.h>
 
 #define HIGH_BAUDRATE 115200 // 高波特率
 #define LOW_BAUDRATE 38400 // 低波特率
@@ -258,7 +260,51 @@ int get_user_input_number(char *prompt)
     // 转换成功，返回数字
     return number;
 }
+bool convert_string_to_hex(const char* str, uint8_t* output) {
 
+    // 检查字符串内容是否全部为0~9或A~F
+    for (size_t i = 0; i<16; i++) {
+        if (!isxdigit(str[i])) {
+            return false;
+        }
+    }
+
+    // 将字符串转换为16进制并存储到数组中
+    for (size_t i = 0; i < 8; i++) {
+        sscanf(str + 2 * i, "%2hhx", &output[i]);
+    }
+
+    return true;
+}
+bool convert_string_to_decimal(const char* str, uint8_t* output) {
+
+    // 检查字符串内容是否全部为0~9
+    for (size_t i = 0; i < 20; i++) {
+        if (!isdigit(str[i])) {
+            return false;
+        }
+    }
+
+    // 将字符串转换为10进制并存储到数组中
+    for (size_t i = 0; i < 20; i++) {
+        output[i] = str[i] - '0';
+    }
+
+    return true;
+}
+bool process_array(uint8_t* input, uint8_t* output) {
+    for (int i = 0; i < 20; i++) {
+        if (input[i] < 0 || input[i] > 9) {
+            return false;
+        }
+    }
+
+    for (int i = 0; i < 10; i++) {
+        output[i] = (input[2*i] << 4) | input[2*i + 1];
+    }
+
+    return true;
+}
 // 主函数
 int main()
 {
@@ -314,7 +360,7 @@ while(1)
         }
         if (!recv_data(DATA_LENGTH))
         {
-            // 接收失败，打印语句”读卡器连接错误！请检查连接！“，关闭串口，等待用户按下任意键退出程序
+            // 接收失败，关闭串口，等待用户按下任意键退出程序
             printf("读卡器连接错误！请检查连接！\n");
             close_port();
             getch();
@@ -336,7 +382,9 @@ uint8_t mode_sw = 0;
     while (1)
     {
         // 获取用户输入
-        choice = get_user_input("输入1修改读卡器设置，输入2进入读卡测试模式（固件V5版本以下不支持，读卡器断电后即退出），输入n退出\n");
+	printf("提示：V4版本以下不支持读卡测试模式，V7版本以下不支持卡号映射功能\n");
+	printf("提示：进入读卡测试模式后只能通过拔线退出，如果不退出，读卡器将无法在正常模式工作\n");
+        choice = get_user_input("输入1修改读卡器设置，输入2进入读卡测试模式，输入n退出\n");
         // 判断用户输入
         if (choice == '1' )
         {
@@ -360,7 +408,6 @@ uint8_t mode_sw = 0;
             printf("请重新输入！\n");
         }
     }
-    // 如果用户选择继续，则先根据前面读到的设置中”读卡器是否工作在高波特率模式“选择电脑端口的发送波特率，是则为115200，否则为38400。
 if (mode_sw == 1){
     if (high_baudrate_mode)
     {
@@ -384,7 +431,6 @@ if (mode_sw == 1){
             return -1;
         }
     }
-    // 创建一个uint8_t system_setting_buffer[2] = {0}，打印语句”是否启用高波特率模式？输入y启用，输入n不启用“，用户输入y则执行system_setting_buffer[0] 的第二位置1。用户输入其他内容则提示”请重新输入！“
     while (1)
     {
         // 获取用户输入
@@ -409,7 +455,6 @@ if (mode_sw == 1){
             printf("请重新输入！\n");
         }
     }
-    // 打印语句”是否启用LED？输入y启用，输入n不启用“，用户输入y则执行system_setting_buffer[0] 的第三位置1。用户输入其他内容则提示”请重新输入！“
     while (1)
     {
         // 获取用户输入
@@ -432,7 +477,6 @@ if (mode_sw == 1){
             printf("请重新输入！\n");
         }
     }
-    // 打印语句”请输入LED亮度范围，范围为0~255，按回车继续“，等待用户输入数字并按下回车，如果用户输入的不是数字或者范围超过了0~255，则提示用户”请重新输入!“，如果符合要求则将输入的数值赋system_setting_buffer[1]
     int brightness; // LED亮度
     while (1)
     {
@@ -451,6 +495,62 @@ if (mode_sw == 1){
             printf("请重新输入!\n");
         }
     }
+uint8_t card_reflect = 0;
+    while (1)
+    {
+        // 获取用户输入
+        choice = get_user_input("是否启用卡号映射功能？输入y启用，输入n不启用\n");
+        // 判断用户输入
+        if (choice == 'y' || choice == 'Y')
+        {
+            // 输入y或者Y，设置system_setting_buffer[0] 的第4位置1，跳出循环
+            system_setting_buffer[0] |= 0b1000;
+	    card_reflect = 1;
+            break;
+        }
+        else if (choice == 'n' || choice == 'N')
+        {
+            // 输入n或者N，跳出循环
+            break;
+        }
+        else
+        {
+            // 输入其他内容，提示用户”请重新输入！“
+            printf("请重新输入！\n");
+        }
+    }
+char card_IDm[8];
+char card_accesscode[10] = {0};
+if(card_reflect)
+{	
+	printf("请输入被转换卡的IDm(16进制格式，`6位，无前缀，中间不需要空格）,按回车结束\n");
+	printf("IDm可以通过本工具的读卡测试模式获取\n");
+	bool transform_result_IDm = false;
+	while(!transform_result_IDm){
+		char char_buffer[256];
+		fgets(char_buffer, 256, stdin);
+		if(convert_string_to_hex(char_buffer,card_IDm)){
+			transform_result_IDm = true;
+		}
+		else{
+			printf("输入格式错误！请重新输入\n");
+		}
+	}
+	printf("请输入目标转换卡的卡号(10进制格式，20位，无前缀，中间不需要空格）,按回车结束\n");
+	bool transform_result_accode = false;
+	while(!transform_result_accode){
+		char char_buffer[256];
+		uint8_t accode_buffer[20];
+		fgets(char_buffer, 256, stdin);
+		if(convert_string_to_decimal(char_buffer,accode_buffer)) {
+			transform_result_accode = true;
+			process_array(accode_buffer, card_accesscode);
+		}
+		else{
+			printf("输入格式错误！请重新输入\n");
+		}
+	}
+ }
 if(high_baudrate_mode)
 {
 	change_baudrate(115200);
@@ -459,24 +559,31 @@ else
 {
 	change_baudrate(38400);
 }
-    // 向COM4端口，以第7步中决定的波特率，先发送16进制数据{E0 08 00 00 F7 02}，再发送system_setting_buffer[2]，再发送16进制数据{0}，最后计算8+0xf7+2+system_setting_buffer[0]+system_setting_buffer[1]，并且将结果发送出去。
-    send_buffer[0] = 0xE0; // 第一个字节为E0
-    send_buffer[1] = 0x08; // 第二个字节为8
-    send_buffer[2] = 0x00; // 第三个字节为0
-    send_buffer[3] = 0x00; // 第四个字节为0
-    send_buffer[4] = 0xF7; // 第五个字节为F7
-    send_buffer[5] = 0x02; // 第六个字节为2
-    send_buffer[6] = system_setting_buffer[0]; // 第七个字节为system_setting_buffer[0]
-    send_buffer[7] = system_setting_buffer[1]; // 第八个字节为system_setting_buffer[1]
-    send_buffer[8] = 0x00; // 第九个字节为0
-uint16_t checksum_cmd = 0x08 + 0xF7 + 0x02 + system_setting_buffer[0] + system_setting_buffer[1];
-    send_buffer[9] = 0; // 第十个字节为校验位
-send_buffer[9] = checksum_cmd & 0b11111111;
+uint8_t uart_send_buffer[28] = {0xE0,0x1A,0x00,0x00,0xF7,0x14,0x0E,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00};
+uart_send_buffer[6] = system_setting_buffer[0]; 
+uart_send_buffer[7] = system_setting_buffer[1]; 
+for(uint8_t i =0;i<8;i++){
+	uart_send_buffer[i+8] = card_IDm[i];
+}
+for(uint8_t i =0;i<10;i++){
+	uart_send_buffer[i+16] =card_accesscode[i];
+}
+uint16_t checksum_cmd;
+for(uint8_t i =0;i<26;i++){
+	uart_send_buffer[27] += uart_send_buffer[i+1];
+}
 DWORD bytes_written;
-WriteFile(hPort, send_buffer,10, &bytes_written, NULL);
-Sleep(3);
+OVERLAPPED overlapped = {0};
+overlapped.hEvent = CreateEvent(NULL, TRUE, FALSE, NULL);
+if (!WriteFile(hPort, uart_send_buffer, 28, &bytes_written, &overlapped))
+{
+        GetOverlappedResult(hPort, &overlapped, &bytes_written, TRUE);
+}
+CloseHandle(overlapped.hEvent);
+//WriteFile(hPort, uart_send_buffer,28, &bytes_written, NULL);
+//Sleep(1);
  // 等待串口数据发送完成
-// 改变串口波特率，如果第8步中用户选择了y，那么将串口的波特率改变为115200，否则改变为38400
+// 改变串口波特率
     if (change_highbaudrate_mode)
     {
         // 用户选择了高波特率模式，设置波特率为115200
@@ -487,29 +594,10 @@ Sleep(3);
         // 用户没有选择高波特率模式，设置波特率为38400
 	change_baudrate(LOW_BAUDRATE);
     }
-    // 监听COM4端口，如果收到回复{E0 06 00 00 F7 00 00 FD}，则提示用户”修改成功！按任意键退出“，等待用户按下任意键退出程序。如果没有收到回复，或者回复的第一个字节不是E0，则提示”修改失败！按任意键退出“，等待用户按下任意键退出程序。
-    if (!recv_data(8))
-    {
-        printf("修改失败！未接收到数据，按任意键退出\n");
-        close_port();
-        getch();
-        return -1;
-    }
-    // 检查回复是否正确
-    if (recv_buffer[0] == 0xE0 && recv_buffer[1] == 0x06 && recv_buffer[2] == 0x00 && recv_buffer[3] == 0x00 && recv_buffer[4] == 0xF7 && recv_buffer[5] == 0x00 && recv_buffer[6] == 0x00 && recv_buffer[7] == 0xFD)
-    {
-        printf("修改成功！按任意键退出\n");
-        close_port();
-        getch();
-        return 0;
-    }
-    else
-    {
-        printf("修改失败！接收数据错误，按任意键退出\n");
-        close_port();
-        getch();
-        return -1;
-    }
+printf("修改完成！按任意键退出\n");
+close_port();
+getch();
+return -1;
 }
 else{
 	if (high_baudrate_mode)

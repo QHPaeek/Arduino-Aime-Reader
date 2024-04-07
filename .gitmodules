@@ -1,0 +1,3 @@
+[submodule "bootloader/STM32F103"]
+	path = bootloader/STM32F103
+	url = https://github.com/crazythink1980/STM32_HID_Bootloader

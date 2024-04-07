@@ -1,3 +1,4 @@
+#include <string.h>
 #if defined(__AVR_ATmega32U4__)
 #pragma message "当前的开发板是 ATmega32U4"
 #define SerialDevice SerialUSB
@@ -45,25 +46,28 @@
 #define BOARD_VISION 5
 #include "lib/WS2812_Air001.h"
 
-#elif defined(STM32F1)
-#pragma message "当前的开发板是 STM32F1"
-//Generic STM32F1 series
+#elif defined(ARDUINO_GENERIC_F103C8TX) || defined(ARDUINO_GENERIC_F103CBTX) || defined(ARDUINO_GENERIC_F103CBUX)
+#pragma message "当前的开发板是 STM32F103C8/CB"
 #define SerialDevice Serial
-#define LED_PIN_RED PB1
-#define LED_PIN_GREEN PB11
-#define LED_PIN_BLUE PB10
 #define BOARD_VISION 6
+//#define SOFT_PWM
 #include "lib/LED_PWM.h"
+#define PN532_UART
+//#include <SoftwareSerial.h>
+//SoftwareSerial UART(PB7, PB6);
+HardwareSerial Serial1(PB7, PB6);
 
-#elif defined(STM32F0)
-#pragma message "当前的开发板是 STM32F0"
+#elif defined(ARDUINO_GENERIC_F072C8TX)
+#pragma message "当前的开发板是 STM32F072C8"
 //Generic STM32F1 series
 #define SerialDevice Serial
-#define LED_PIN_RED PB1
-#define LED_PIN_GREEN PB11
-#define LED_PIN_BLUE PB10
 #define BOARD_VISION 7
-#include "lib/LED_PWM.h"
+#define LED_PIN_RED PB1
+#define LED_PIN_GREEN PB_11
+#define LED_PIN_BLUE PB_10
+#include "lib/LED_analogwrite.h"
+#define PN532_UART
+HardwareSerial Serial1(PB_7, PB_6);
 
 #elif defined(ARDUINO_ARCH_RP2040)
 #pragma message "当前的开发板是 RP2040"
@@ -90,8 +94,19 @@
 #define SCL_Pin 2
 #include "lib/WS2812_FastLed.h"
 
+#elif defined(_BOARD_GENERIC_STM32F103C_H_)
+#pragma message "当前的开发板是 STM32F103C6"
+#define SerialDevice Serial
+#define BOARD_VISION 11
+#define LED_PIN_RED PB1
+#define LED_PIN_GREEN PB11
+#define LED_PIN_BLUE PB10
+#include "lib/LED_analogwrite.h"
+#define PN532_UART
+
 #else
 #error "未经测试的开发板，请检查串口和针脚定义"
+
 #endif
 
 #if defined(PN532_SPI_SS)
@@ -99,6 +114,14 @@
 #include <SPI.h>
 #include <PN532_SPI.h>
 PN532_SPI pn532(SPI, PN532_SPI_SS);
+#elif defined(PN532_UART)
+#pragma message "使用 UART 连接 PN532"
+#include <PN532_HSU.h>
+PN532_HSU pn532(Serial1);
+#elif defined(PN532_SWUART)
+#pragma message "使用 SWUART 连接 PN532"
+#include <PN532_SWHSU.h>
+PN532_SWHSU pn532(UART);
 #else
 #pragma message "使用 I2C 连接 PN532"
 #include <Wire.h>
@@ -111,8 +134,16 @@ PN532 nfc(pn532);
 uint8_t KeyA[6], KeyB[6];
 
 #include <EEPROM.h>
+//EEPROM
+//1：系统设置，第0位保留，第1位是否开启高波特率，第二位是否开启LED，第三位是否启用AIC卡号映射
+//2：LED亮度
+//3：固件版本号
+//4-11：被映射AIC卡号IDM
+//12-22：目标卡号
 uint8_t system_setting[3] = {0};
-uint8_t default_system_setting[3] = {0b10000110,128,6};
+uint8_t mapped_card_IDm[8] = {0};
+uint8_t default_system_setting[3] = {0b10000110,128,7};
+//LED灯颜色缓冲区，每次循环根据缓冲区颜色刷一次灯。
 uint8_t LED_buffer[3] = {0};
 
 enum {
@@ -170,6 +201,16 @@ enum {  // 未确认效果
   ERROR_FELICA_ERROR = 33,
 };
 
+struct mifare_card {
+  bool enable;
+  uint8_t block0[16]= {0xED,0x88,0xA1,0x5F,0x9B,0x88,0x04,0x00,0xC8,0x50,0x00,0x20,0x00,0x00,0x00,0x16};
+  uint8_t block1[16]= {0};
+  uint8_t block2[16]= {0};
+  uint8_t block3[16]= {0x57,0x43,0x43,0x46,0x76,0x32,0x70,0xF8,0x78,0x11,0x57,0x43,0x43,0x46,0x76,0x32};
+};
+
+struct mifare_card card_reflect;
+
 typedef union {
   uint8_t bytes[128];
   struct {
@@ -181,7 +222,11 @@ typedef union {
     union {
       uint8_t key[6];            // CMD_MIFARE_KEY_SET
       uint8_t color_payload[3];  // CMD_EXT_BOARD_LED_RGB
-      uint8_t eeprom_data[2];     //系统内部设置
+      struct {
+        uint8_t eeprom_data[2];     //系统内部设置
+        uint8_t mapped_IDm[8];
+        uint8_t target_accesscode[10];
+      };
       struct {                   // CMD_CARD_SELECT,AUTHORIZE,READ
         uint8_t uid[4];
         uint8_t block_no;
@@ -265,6 +310,16 @@ packet_response_t res;
 
 uint8_t len, r, checksum;
 bool escape = false;
+
+void LED_refresh()
+{
+  if (!(system_setting[0] & 0b100)){
+    LED_show(0,0,0);
+  }
+  else{
+    LED_show((uint8_t)LED_buffer[0],(uint8_t)LED_buffer[1],(uint8_t)LED_buffer[2]);
+  }
+}
 
 uint8_t packet_read() {
   while (SerialDevice.available()) {
@@ -400,11 +455,40 @@ void nfc_card_detect() {
     res_init(0x07);
     res.count = 1;
     res.type = 0x10;
-  } else if (nfc.felica_Polling(0xFFFF, 0x00, res.IDm, res.PMm, &SystemCode, 200) == 1) {
-    res_init(0x13);
-    res.count = 1;
-    res.type = 0x20;
-    res.id_len = 0x10;
+  } else if (nfc.felica_Polling(0xFFFF, 0x00, res.IDm, res.PMm, &SystemCode, 50) == 1) {
+    if(system_setting[0] & 0b1000)
+    { 
+      bool card_judge = true;
+      for(uint8_t i = 0;i<8;i++)
+      {
+        if(res.IDm[i] != mapped_card_IDm[i])
+        {
+          card_judge = false;
+          break;
+        }
+      }
+      if(card_judge)
+      {
+        card_reflect.enable = true;
+        res_init(0x07);
+        res.count = 1;
+        res.type = 0x10;
+        return;
+      }
+      else{
+        res_init(0x13);
+        res.count = 1;
+        res.type = 0x20;
+        res.id_len = 0x10;
+        return;
+      }
+    }
+    else{
+      res_init(0x13);
+      res.count = 1;
+      res.type = 0x20;
+      res.id_len = 0x10;
+    }
   } else {
     res_init(1);
     res.count = 0;
@@ -414,21 +498,43 @@ void nfc_card_detect() {
 
 void nfc_mifare_authorize_a() {
   res_init();
-  if (!nfc.mifareclassic_AuthenticateBlock(req.uid, 4, req.block_no, 0, KeyA)) {
+  if ((!nfc.mifareclassic_AuthenticateBlock(req.uid, 4, req.block_no, 0, KeyA)) && (!card_reflect.enable)) {
     res.status = ERROR_NFCRW_ACCESS_ERROR;
   }
 }
 
 void nfc_mifare_authorize_b() {
   res_init();
-  if (!nfc.mifareclassic_AuthenticateBlock(req.uid, 4, req.block_no, 1, KeyB)) {
+  if ((!nfc.mifareclassic_AuthenticateBlock(req.uid, 4, req.block_no, 1, KeyB)) && (!card_reflect.enable)) {
     res.status = ERROR_NFCRW_ACCESS_ERROR;
   }
 }
 
 void nfc_mifare_read() {
   res_init(0x10);
-  if (!nfc.mifareclassic_ReadDataBlock(req.block_no, res.block)) {
+  if(card_reflect.enable){
+    switch(req.block_no){
+      case 0:
+        memcpy(res.block,card_reflect.block0,16);
+        break;
+      case 1:
+        memcpy(res.block,card_reflect.block1,16);
+        break;
+      case 2:
+        memcpy(res.block,card_reflect.block2,16);
+        card_reflect.enable = false;
+        break;
+      case 3:
+        memcpy(res.block,card_reflect.block3,16);
+        break;
+      default:
+        res_init();
+        res.status = ERROR_CARD_DETECT_TIMEOUT;
+        break;
+    }
+    return;
+  }
+  else if (!nfc.mifareclassic_ReadDataBlock(req.block_no, res.block)) {
     res_init();
     res.status = ERROR_CARD_DETECT_TIMEOUT;
   }
@@ -436,7 +542,7 @@ void nfc_mifare_read() {
 
 void nfc_felica_through() {
   uint16_t SystemCode;
-  if (nfc.felica_Polling(0xFFFF, 0x01, res.encap_IDm, res.poll_PMm, &SystemCode, 200) == 1) {
+  if (nfc.felica_Polling(0xFFFF, 0x01, res.encap_IDm, res.poll_PMm, &SystemCode, 50) == 1) {
     SystemCode = SystemCode >> 8 | SystemCode << 8;
   } else {
     res_init();
