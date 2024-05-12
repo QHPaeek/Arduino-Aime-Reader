@@ -2,6 +2,38 @@
 spiceapi::Connection CON(512);
 bool FWSW;
 
+void Spice_Mode_Init(){
+  SerialDevice.begin(115200);
+  // if(system_setting[0] & 0b1000)
+  // {
+  //   for(uint8_t i = 0;i<8;i++)
+  //   {
+  //     mapped_card_IDm[i] = EEPROM.read(i+4);
+  //   }
+  //   for(uint8_t i = 0;i<10;i++)
+  //   {
+  //     card_reflect.block2[i+7] = EEPROM.read(i+12);
+  //   }
+  // }
+  LED_Init();
+  nfc.begin();
+  while (!nfc.getFirmwareVersion()) {
+    delay(500);
+    SerialDevice.println("Didn't find PN53x board");
+    if((system_setting[0] & 0b100)){
+      LED_show(system_setting[1],0x00,0x00);
+    }
+  }
+  nfc.setPassiveActivationRetries(0x10);
+  nfc.SAMConfig();
+  memset(req.bytes, 0, sizeof(req.bytes));
+  memset(res.bytes, 0, sizeof(res.bytes));
+  LED_buffer[0] = 0;
+  LED_buffer[1] = 0;
+  LED_buffer[2] = system_setting[1];
+
+}
+
 void Spicetool_Mode_Loop(){
   uint16_t SystemCode;
   char card_id[17];

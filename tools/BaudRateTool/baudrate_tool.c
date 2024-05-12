@@ -621,7 +621,7 @@ else{
 DWORD bytes_written;
 char buffer[1024];
 DWORD bytesRead;
-uint8_t send_buffer_readtest_cmd[8] = {0xe0,0x06,0x00 ,0x00,0xF8,0x00,0x00,0xFE};
+uint8_t send_buffer_readtest_cmd[8] = {0xE0 ,0x06 ,00,00,0xF8 ,0x01,0x03,0x02};
 while((WriteFile(hPort, send_buffer_readtest_cmd,8, &bytes_written, NULL) == FALSE));
  while (1) {
         while(ReadFile(hPort, buffer, sizeof(buffer), &bytesRead, NULL) == FALSE);

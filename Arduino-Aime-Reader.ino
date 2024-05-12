@@ -1,7 +1,17 @@
+#define SEGA_MODE
+//#define SPICE_MODE
+//#define NAMCO_MODE
+
 #include "Device.h"
+#if defined (SEGA_MODE)
 #include "Sega_Aime_Reader.h"
+#endif
+#if defined (SPICE_MODE)
 #include "Spicetool_Reader.h"
+#endif
+#if defined (NAMCO_MODE)
 #include "Namco_Banapass_Reader.h"
+#endif
 #include "Test_Reader.h"
 
 void setup() {
@@ -23,12 +33,23 @@ void setup() {
   EEPROM_get_sysconfig();
   system_mode = 0;
   switch(system_mode){
+    #if defined (SEGA_MODE)
     case 0:
       Sega_Mode_Init();
-  //  case 2:
-  //    Namco_PN532_Setup();
-  //  default:
-  //    break;
+      break;
+    #endif
+    #if defined (SPICE_MODE)
+    case 1:
+      Spice_Mode_Init();
+      break;
+    #endif
+    #if defined (NAMCO_MODE)
+    case 2:
+      Namco_PN532_Setup();
+      break;
+    #endif
+    default:
+      break;
   }
   //LED_show(0,0,255);
 }
@@ -36,18 +57,22 @@ void setup() {
 void loop() {
   //system_mode = 2;
   switch(system_mode){
+    #if defined (SEGA_MODE)
     case 0:
       Sega_Mode_Loop();
       break;
-  //  case 1:
-  //    Spicetool_Mode_Loop();
-   case 2:
-     Namco_Mode_Loop();
+    #endif
+    #if defined (SPICE_MODE)
+    case 1:
+      Spicetool_Mode_Loop();
+    #endif
+    #if defined (NAMCO_MODE)
+    case 2:
+      Namco_Mode_Loop();
+    #endif
     case 3:
       Test_Reader_Loop();
       break;
-  //  case 4:
-  //    break;
     default:
       break;
   }
