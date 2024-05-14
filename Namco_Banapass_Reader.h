@@ -25,10 +25,13 @@ class message
 };
 
 message recv, _send;
+uint8_t cmd_switch;
 int pass_s0 = 0;
 bool zerohead = 0;
+extern uint8_t switch_flag;
 
 void Namco_PN532_Setup(){
+  cmd_switch = 0;
   SerialDevice.begin(38400);
   SerialNFC.begin(115200);
   LED_Init();
@@ -626,7 +629,12 @@ void doRecv() {
   if (SerialDevice.available())
   {
     uint8_t recvByte = SerialDevice.read();
-
+    if(recvByte == 0xaf){
+      cmd_switch++;
+    }else{
+      cmd_switch=0;
+    }
+    //计数连续接到0xaf的数量，当做切换模式的指令
     if (recv.all_len == 0 && recvByte != 0x00)
     {
       recv.initThis();
@@ -682,6 +690,10 @@ void Namco_Mode_Loop(){
   beep8svc();
   doRecv();
   doSend();
+  if(cmd_switch == 30){
+    system_mode = 0;
+    switch_flag = 1;
+  }
   if (pass_s0) {
     while (SerialNFC.available() && pass_s0) {
       SerialNFC.read();

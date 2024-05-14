@@ -18,9 +18,24 @@ uint8_t MifareKey[6] = {0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF};
 const uint16_t blockList[4] = {0x8080, 0x8081, 0x8082, 0x8083};
 const uint16_t serviceCodeList[1] = {0x000B};
 uint8_t blockData[1][16];
+extern uint8_t switch_flag;
 
 void Test_Reader_Loop()
 {
+  LED_show(255,255,0);
+  uint8_t cmd_switch = 0;
+  while(SerialDevice.available()){
+    uint8_t c = SerialDevice.read();
+    if(c == 0xaf){
+      cmd_switch++;
+    }else{
+      cmd_switch=0;
+    }
+    if(cmd_switch == 30){
+      system_mode = 0;
+      switch_flag = 1;
+    }
+  }
    uint8_t uid[4], uL;
    if (nfc.readPassiveTargetID(PN532_MIFARE_ISO14443A, uid, &uL) && nfc.mifareclassic_AuthenticateBlock(uid, uL, 1, 1, AimeKey)) {
       SerialDevice.println("Aime card!");

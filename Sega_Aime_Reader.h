@@ -1,6 +1,8 @@
 #include <string.h>
 
 uint8_t KeyA[6], KeyB[6];
+extern uint8_t switch_flag;
+extern uint8_t system_mode;
 
 #define RETRY 10
 
@@ -740,12 +742,14 @@ void Sega_Mode_Loop(){
          LED_buffer[2] = 0;
         }
         system_mode = req.mode;
+        switch_flag = 1;
         delay(1);
         res_init();
         break;
 
       case CMD_SW_MODE:
         system_mode = req.mode;
+        switch_flag = 1;
         break;  
 
       default:

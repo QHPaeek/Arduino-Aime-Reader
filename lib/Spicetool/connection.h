@@ -11,6 +11,8 @@
 #define SPICEAPI_INTERFACE Serial
 #endif
 
+extern uint8_t switch_flag;
+
 namespace spiceapi {
 
 class Connection {
@@ -51,10 +53,20 @@ const char* spiceapi::Connection::request(char* json_data) {
 
   // receive
   size_t receive_data_len = 0;
+  uint8_t cmd_switch = 0;
   while (SPICEAPI_INTERFACE) {
 
     // read single byte
     auto b = SPICEAPI_INTERFACE.read();
+    if(b == 0xaf){
+      cmd_switch++;
+    }else{
+      cmd_switch=0;
+    }
+    if(cmd_switch = 30){
+      system_mode = 0;
+      switch_flag = 1;
+    }
     if (b < 0) continue;
     receive_buffer[receive_data_len++] = b;
 

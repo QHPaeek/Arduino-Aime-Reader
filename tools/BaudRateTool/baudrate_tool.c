@@ -141,7 +141,7 @@ BOOL process_data(int length)
     // 检查第一个字节是否为E0
     if (recv_buffer[0] != 0xE0)
     {
-        printf("读卡器连接错误！请检查连接！\n");
+        printf("读卡器连接错误！请检查连接！ERROR01\n");
         return FALSE;
     }
     // 计算校验位
@@ -153,7 +153,7 @@ BOOL process_data(int length)
     // 检查校验位是否正确
     if (checksum != recv_buffer[length - 1])
     {
-        printf("读卡器连接错误！请检查连接！\n");
+        printf("读卡器连接错误！请检查连接！REEOR02\n");
         return FALSE;
     }
     // 解析数据
@@ -332,6 +332,12 @@ while(1)
         getch();
         return -1;
     }
+	uint8_t mode_rst_cmd[30]={0xaf,0xaf,0xaf,0xaf,0xaf,0xaf,0xaf,0xaf,0xaf,0xaf,0xaf,0xaf,0xaf,0xaf,0xaf,0xaf,0xaf,0xaf,0xaf,0xaf,0xaf,0xaf,0xaf,0xaf,0xaf,0xaf,0xaf,0xaf,0xaf,0xaf};
+	change_baudrate(LOW_BAUDRATE);
+	while(!WriteFile(hPort, mode_rst_cmd, 30, NULL, NULL));
+	change_baudrate(HIGH_BAUDRATE);
+	while(!WriteFile(hPort, mode_rst_cmd, 30, NULL, NULL));
+//以两个不同波特率发30个0xff，即读卡器模式初始化命令，确保读卡器此时切换回sega模式
     // 向COM4端口以115200波特率输出16进制数据E0 06 00 00 F6 00 00 FC，并且监听回复。
     if (!send_data(8))
     {
@@ -381,10 +387,10 @@ while(1)
 uint8_t mode_sw = 0;
     while (1)
     {
-        // 获取用户输入
 	printf("提示：V4版本以下不支持读卡测试模式，V7版本以下不支持卡号映射功能\n");
 	printf("提示：进入读卡测试模式后只能通过拔线退出，如果不退出，读卡器将无法在正常模式工作\n");
-        choice = get_user_input("输入1修改读卡器设置，输入2进入读卡测试模式，输入n退出\n");
+	printf("提示：连接此工具后读卡器已被重置为默认sega模式\n");
+        choice = get_user_input("输入1修改sega模式下读卡器设置，输入2进入读卡测试模式，输入3进入Namco模式，输入4进入Spice模式，输入5进入PN532直通模式，输入n退出\n");
         // 判断用户输入
         if (choice == '1' )
         {
@@ -395,6 +401,33 @@ uint8_t mode_sw = 0;
         {
 	mode_sw = 2;
             break;
+        }
+        else if (choice == '3' )
+        {
+		DWORD bytes_written;
+		uint8_t send_buffer_readtest_cmd[8] = {0xE0 ,0x06 ,00,00,0xF8 ,0x01,0x02,0x01};
+		while((WriteFile(hPort, send_buffer_readtest_cmd,8, &bytes_written, NULL) == FALSE));
+		printf("模式修改完成，按任意键退出\n");
+        	getch();
+        	return -1;
+        }
+        else if (choice == '4' )
+        {
+		DWORD bytes_written;
+		uint8_t send_buffer_readtest_cmd[8] = {0xE0 ,0x06 ,00,00,0xF8 ,0x01,0x01,0x00};
+		while((WriteFile(hPort, send_buffer_readtest_cmd,8, &bytes_written, NULL) == FALSE));
+		printf("模式修改完成，按任意键退出\n");
+        	getch();
+        	return -1;
+        }
+        else if (choice == '5' )
+        {
+		DWORD bytes_written;
+		uint8_t send_buffer_readtest_cmd[8] = {0xE0 ,0x06 ,00,00,0xF8 ,0x01,0x04,0x03};
+		while((WriteFile(hPort, send_buffer_readtest_cmd,8, &bytes_written, NULL) == FALSE));
+		printf("模式修改完成，按任意键退出\n");
+        	getch();
+        	return -1;
         }
         else if (choice == 'n' || choice == 'N')
         {

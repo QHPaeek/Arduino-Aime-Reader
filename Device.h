@@ -72,6 +72,9 @@ HardwareSerial SerialPN532(PF0, PF1);
 #define SerialDevice Serial
 #define SPICEAPI_INTERFACE Serial
 #define BOARD_VISION 7
+// #define LED_PIN_RED PB_1
+// #define LED_PIN_GREEN PB_11
+// #define LED_PIN_BLUE PB_10
 #define LED_PIN_RED PB_11
 #define LED_PIN_GREEN PB_10
 #define LED_PIN_BLUE PB_1
@@ -124,10 +127,10 @@ PN532 nfc(pn532);
 //12-22：目标卡号
 uint8_t system_setting[3] = {0};
 uint8_t mapped_card_IDm[8] = {0};
-const uint8_t default_system_setting[3] = {0b00000110,128,7};
+const uint8_t default_system_setting[3] = {0b00000110,128,8};
 //LED灯颜色缓冲区，每次循环根据缓冲区颜色刷一次灯。
 uint8_t LED_buffer[3] = {0};
-uint8_t system_mode;
+extern uint8_t system_mode;
 
 void EEPROM_get_sysconfig(){
   #if defined(ESP8266)
@@ -144,7 +147,7 @@ void EEPROM_get_sysconfig(){
     system_setting[i] = default_system_setting[i];
     }
   }
-  system_mode = (system_setting[0] & (0b11100000) >> 5);
+  system_mode = ((system_setting[0] & (0b11100000)) >> 5);
   #if defined(ESP8266)
   EEPROM.commit();
   #endif

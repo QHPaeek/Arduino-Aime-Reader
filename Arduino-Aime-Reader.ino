@@ -1,10 +1,11 @@
 #define SEGA_MODE
-//#define SPICE_MODE
-//#define NAMCO_MODE
+#define SPICE_MODE
+#define NAMCO_MODE
 
 #include "Device.h"
 #if defined (SEGA_MODE)
 #include "Sega_Aime_Reader.h"
+#include "Test_Reader.h"
 #endif
 #if defined (SPICE_MODE)
 #include "Spicetool_Reader.h"
@@ -12,7 +13,10 @@
 #if defined (NAMCO_MODE)
 #include "Namco_Banapass_Reader.h"
 #endif
-#include "Test_Reader.h"
+#include "PN532_RAW.h"
+
+uint8_t switch_flag = 0;
+uint8_t system_mode = 0;
 
 void setup() {
 
@@ -31,7 +35,7 @@ void setup() {
   afio_remap(AFIO_REMAP_USART1); 
   #endif
   EEPROM_get_sysconfig();
-  system_mode = 0;
+  //system_mode = 1;
   switch(system_mode){
     #if defined (SEGA_MODE)
     case 0:
@@ -55,23 +59,51 @@ void setup() {
 }
 
 void loop() {
-  //system_mode = 2;
+  if(switch_flag){
+    switch(system_mode){
+      #if defined (SEGA_MODE)
+      case 0:
+        Sega_Mode_Init();
+        switch_flag = 0;
+        break;
+      #endif
+      #if defined (SPICE_MODE)
+      case 1:
+        Spice_Mode_Init();
+        switch_flag = 0;
+        break;
+      #endif
+      #if defined (NAMCO_MODE)
+      case 2:
+        Namco_PN532_Setup();
+        switch_flag = 0;
+        break;
+      #endif
+      default:
+        break;
+    }
+  }
   switch(system_mode){
     #if defined (SEGA_MODE)
     case 0:
       Sega_Mode_Loop();
       break;
+    case 3:
+      Test_Reader_Loop();
+      break;
     #endif
     #if defined (SPICE_MODE)
     case 1:
       Spicetool_Mode_Loop();
+      break;
     #endif
     #if defined (NAMCO_MODE)
     case 2:
       Namco_Mode_Loop();
+      break;
     #endif
-    case 3:
-      Test_Reader_Loop();
+    case 4:
+      RAW_Loop();
       break;
     default:
       break;
