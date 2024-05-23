@@ -43,6 +43,7 @@ enum {
   CMD_READ_EEPROM = 0xf6,
   CMD_WRITE_EEPROM = 0xf7,
   CMD_SW_MODE = 0xf8,
+  CMD_READ_MODE = 0xf9,
 };
 
 enum {
@@ -148,6 +149,7 @@ typedef union {
     uint8_t status;
     uint8_t payload_len;
     union {
+      uint8_t mode;
       uint8_t version[1];  // CMD_GET_FW_VERSION,CMD_GET_HW_VERSION,CMD_EXT_BOARD_INFO
       uint8_t block[16];   // CMD_MIFARE_READ
       struct{
@@ -208,7 +210,7 @@ void Sega_Mode_Init(){
     }
     for(uint8_t i = 0;i<10;i++)
     {
-      card_reflect.block2[i+7] = EEPROM.read(i+12);
+      card_reflect.block2[i+6] = EEPROM.read(i+12);
     }
   }
   LED_Init();
@@ -381,41 +383,24 @@ void nfc_stop_polling() {
 
 void nfc_card_detect() {
   card_reflect.enable = false;
+  mifare_card_buffer.enable = false;
+  bana_card_buffer.enable = false;
   uint8_t bufferLength;
   uint16_t SystemCode;
   uint8_t AimeKey[6] = {0x57, 0x43, 0x43, 0x46, 0x76, 0x32};
   uint8_t BanaKey[6] = {0x60, 0x90, 0xD0, 0x06, 0x32, 0xF5};
-  if(nfc.readPassiveTargetID(PN532_MIFARE_ISO14443A, res.mifare_uid, &res.id_len)){
-    if(nfc.mifareclassic_AuthenticateBlock(res.mifare_uid,res.id_len, 1, 1, BanaKey)){
-      if(nfc.mifareclassic_ReadDataBlock(1, bana_card_buffer.block1)){
-        bana_card_buffer.enable = true;
-        res_init(0x07);
-        res.count = 1;
-        res.type = 0x10;
-        return;
-      }
-    }
-  }
-  else if (nfc.readPassiveTargetID(PN532_MIFARE_ISO14443A, res.mifare_uid, &res.id_len)){
-    if(nfc.mifareclassic_AuthenticateBlock(res.mifare_uid,res.id_len, 1, 1, AimeKey)){
-      if(nfc.mifareclassic_ReadDataBlock(2, mifare_card_buffer.block2)){
-        mifare_card_buffer.enable = true;
-        res_init(0x07);
-        res.count = 1;
-        res.type = 0x10;
-        return;
-      }
-    }
-  }else if(nfc.readPassiveTargetID(PN532_MIFARE_ISO14443A, res.mifare_uid, &res.id_len)){
-    if(nfc.mifareclassic_AuthenticateBlock(res.mifare_uid,res.id_len, 1, 1, BanaKey)){
-      if(nfc.mifareclassic_ReadDataBlock(2, bana_card_buffer.block2)){
-        bana_card_buffer.enable = true;
-        res_init(0x07);
-        res.count = 1;
-        res.type = 0x10;
-        return;
-      }
-    }
+  if(nfc.readPassiveTargetID(PN532_MIFARE_ISO14443A, res.mifare_uid, &res.id_len) && nfc.mifareclassic_AuthenticateBlock(res.mifare_uid,res.id_len, 1, 1, BanaKey) && nfc.mifareclassic_ReadDataBlock(1, bana_card_buffer.block1)){
+    bana_card_buffer.enable = true;
+    res_init(0x07);
+    res.count = 1;
+    res.type = 0x10;
+    return;
+  } else if (nfc.readPassiveTargetID(PN532_MIFARE_ISO14443A, res.mifare_uid, &res.id_len) && nfc.mifareclassic_AuthenticateBlock(res.mifare_uid,res.id_len, 1, 1, AimeKey) && nfc.mifareclassic_ReadDataBlock(2, mifare_card_buffer.block2)){
+    mifare_card_buffer.enable = true;
+    res_init(0x07);
+    res.count = 1;
+    res.type = 0x10;
+    return;
   } else if (nfc.felica_Polling(0xFFFF, 0x00, res.IDm, res.PMm, &SystemCode, 200) == 1) {
     if(system_setting[0] & 0b1000)
     { 
@@ -504,7 +489,7 @@ void nfc_mifare_read() {
         break;
       case 2:
         memcpy(res.block,mifare_card_buffer.block2,16);
-        mifare_card_buffer.enable = false;
+        //mifare_card_buffer.enable = false;
         break;
       case 3:
         memcpy(res.block,mifare_card_buffer.block3,16);
@@ -522,7 +507,7 @@ void nfc_mifare_read() {
         break;
       case 1:
         memcpy(res.block,bana_card_buffer.block1,16);
-        bana_card_buffer.enable = false;
+        //bana_card_buffer.enable = false;
         break;
       case 2:
         memcpy(res.block,bana_card_buffer.block2,16);
@@ -741,17 +726,26 @@ void Sega_Mode_Loop(){
          LED_buffer[1] = 0;
          LED_buffer[2] = 0;
         }
-        system_mode = req.mode;
-        switch_flag = 1;
         delay(1);
         res_init();
         break;
 
       case CMD_SW_MODE:
         system_mode = req.mode;
+        if(req.mode != 3){
+          EEPROM.write(23,system_mode);
+          #if defined(ESP8266)
+          EEPROM.commit();
+          #endif
+        }
         switch_flag = 1;
         break;  
-
+      
+      case CMD_READ_MODE :
+        res_init();
+        res.mode = EEPROM.read(24);
+        break;
+        
       default:
         res_init();
         res.status = STATUS_INVALID_COMMAND;

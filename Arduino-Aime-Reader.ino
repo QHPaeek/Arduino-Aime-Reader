@@ -1,6 +1,6 @@
-#define SEGA_MODE
-#define SPICE_MODE
-#define NAMCO_MODE
+#define SEGA_MODE 1
+#define SPICE_MODE 1
+#define NAMCO_MODE 1
 
 #include "Device.h"
 #if defined (SEGA_MODE)
@@ -35,10 +35,16 @@ void setup() {
   afio_remap(AFIO_REMAP_USART1); 
   #endif
   EEPROM_get_sysconfig();
-  //system_mode = 1;
+  //system_mode = 2;
   switch(system_mode){
     #if defined (SEGA_MODE)
     case 0:
+      Sega_Mode_Init();
+      break;
+    case 3:
+      Sega_Mode_Init();
+      break;
+    case 4:
       Sega_Mode_Init();
       break;
     #endif
@@ -52,7 +58,15 @@ void setup() {
       Namco_PN532_Setup();
       break;
     #endif
+    
     default:
+      #if SEGA_MODE
+      Sega_Mode_Init();
+    #elif SPICE_MODE
+      Spice_Mode_Init();
+    #elif NAMCO_MODE
+      Namco_PN532_Setup();
+    #endif
       break;
   }
   //LED_show(0,0,255);
@@ -83,6 +97,7 @@ void loop() {
         break;
     }
   }
+  //system_mode = 2;
   switch(system_mode){
     #if defined (SEGA_MODE)
     case 0:
@@ -106,6 +121,13 @@ void loop() {
       RAW_Loop();
       break;
     default:
+    #if SEGA_MODE
+      Sega_Mode_Loop();
+    #elif SPICE_MODE
+      Spicetool_Mode_Loop();
+    #elif NAMCO_MODE
+      Namco_Mode_Loop();
+    #endif
       break;
   }
     

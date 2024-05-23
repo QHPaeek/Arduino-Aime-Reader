@@ -11,6 +11,11 @@ void RAW_Loop(){
     if(cmd_switch == 30){
       system_mode = 0;
       switch_flag = 1;
+      EEPROM.write(23,0);
+      #if defined(ESP8266)
+      EEPROM.commit();
+      #endif
+      return;
     }
     SerialNFC.write(c);
   }

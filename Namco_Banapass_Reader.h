@@ -80,12 +80,6 @@ void Namco_PN532_Setup(){
   _send.initThis();
 }
 
-void errorHappen()
-{
-  recv.initThis();
-}
-
-int ledstat = 0;
 /*
 
    Dirty LED code:
@@ -102,8 +96,11 @@ int ledstat = 0;
   10->RYloop
   11->blue keep
 */
-
-long leddelay = 0, ledlasttim = 0, ledlev = 0, ledext = 0;
+uint8_t ledstat = 0;
+uint32_t leddelay = 0;
+uint32_t ledlasttim = 0; 
+uint8_t ledlev = 0; 
+uint8_t ledext = 0;
 
 void ledsvc()
 {
@@ -234,7 +231,7 @@ void ledsvc()
         ledlasttim = millis();
         return;
       }
-      LED_show((int)(((double)1 - (double)fabs(((((double)millis() - (double)ledlasttim) / (double)1000) * (double)2) - (double)1)) * (double)255), 0, 0);
+      LED_show((uint8_t)(((float)1 - (float)fabs(((((float)millis() - (float)ledlasttim) / (float)1000) * (float)2) - (float)1)) * (float)255), 0, 0);
     }
     if (ledext == 1)
     {
@@ -245,7 +242,7 @@ void ledsvc()
         ledlasttim = millis();
         return;
       }
-      LED_show(0, (int)(((double)1 - (double)fabs(((((double)millis() - (double)ledlasttim) / (double)1000) * (double)2) - (double)1)) * (double)255), 0);
+      LED_show(0, (uint8_t)(((float)1 - (float)fabs(((((float)millis() - (float)ledlasttim) / (float)1000) * (float)2) - (float)1)) * (float)255), 0);
     }
     if (ledext == 2)
     {
@@ -257,7 +254,7 @@ void ledsvc()
         return;
       }
 
-      LED_show(0, 0, (int)(((double)1 - (double)fabs(((((double)millis() - (double)ledlasttim) / (double)1000) * (double)2) - (double)1)) * (double)255));
+      LED_show(0, 0, (uint8_t)(((float)1 - (float)fabs(((((float)millis() - (float)ledlasttim) / (float)1000) * (float)2) - (float)1)) * (float)255));
     }
   }
   if (ledstat == 2)
@@ -270,32 +267,14 @@ void ledsvc()
     if (!ledext)
     {
       // ___---^^^
-      LED_show(0, 0, uint8_t((double(millis() - ledlasttim) / (double)500) * 255));
+      LED_show(0, 0, uint8_t((float(millis() - ledlasttim) / (float)500) * 255));
     }
     else if (ledext)
     {
       // ^^^---___
-      LED_show(0, 0, uint8_t(255 - (double(millis() - ledlasttim) / (double)500) * 255));
+      LED_show(0, 0, uint8_t(255 - (float(millis() - ledlasttim) / (float)500) * 255));
     }
   }
-}
-
-void beep_1() {
-
-}
-
-void beep_3() {
-
-}
-void beep_end() {
-
-}
-void beep_test() {
-
-}
-
-void beep8svc(){
-
 }
 
 void set_led_blue_breath() {
@@ -364,9 +343,6 @@ void setLEDMode(uint8_t _mode) {
   else if (_mode == 0x1b) set_led_blue_keep();
 
 }
-void setBEEPMode(uint8_t _mode) {
-
-}
 
 
 
@@ -383,8 +359,6 @@ void proc()
   //PeripheralDevice
   if (recv.getCommandCode() == 0x0E)
   { //Command Code = 0x0E(Write GPIO) -> BEEP and LED Commands
-    if (recv.data[7] == 0x08) // BEEP Command
-      setBEEPMode(recv.data[8]);
     if (recv.data[7] == 0x01) // LED Command
       setLEDMode(recv.data[8]);
     //all of them has a same response
@@ -567,10 +541,10 @@ void proc()
                              0xCC , 0x00
                             };
     uint8_t sum = 0;
-    for (int i = 0 ; i < 18; i++)to_532_data[8 + i] = recv.data[9 + i]; //copy felica len+cmd raw data
-    for (int i = 0; i < 26; i++) sum += to_532_data[i];// calc checksum step 1
+    for (uint8_t i = 0 ; i < 18; i++)to_532_data[8 + i] = recv.data[9 + i]; //copy felica len+cmd raw data
+    for (uint8_t i = 0; i < 26; i++) sum += to_532_data[i];// calc checksum step 1
     to_532_data[26] = (uint16_t)0xFF - (uint16_t)sum; // calc checksum step 2
-    for (int i = 0; i < 28; i++) {
+    for (uint8_t i = 0; i < 28; i++) {
       SerialNFC.write(to_532_data[i]); // send to 532}
       //      Serial.write(to_532_data[i]);debug
     }
@@ -649,7 +623,7 @@ void doRecv() {
       recv.len = recv.data[3];
       if (!(recv.data[0] == 0 && recv.data[1] == 0 && recv.data[2] == 0xFF))
       {
-        errorHappen();
+        recv.initThis();
       }
     }
     else
@@ -678,21 +652,18 @@ void doSend() {
   _send.initThis();
 }
 
-void beep(int level, int len)
-{
-  delay(len);
-}
-int beeptype = 10;
-long lastbeep = 0;
-
 void Namco_Mode_Loop(){
   ledsvc();
-  beep8svc();
   doRecv();
   doSend();
   if(cmd_switch == 30){
     system_mode = 0;
     switch_flag = 1;
+    EEPROM.write(23,0);
+    #if defined(ESP8266)
+    EEPROM.commit();
+    #endif
+    return;
   }
   if (pass_s0) {
     while (SerialNFC.available() && pass_s0) {

@@ -75,10 +75,14 @@ HardwareSerial SerialPN532(PF0, PF1);
 // #define LED_PIN_RED PB_1
 // #define LED_PIN_GREEN PB_11
 // #define LED_PIN_BLUE PB_10
-#define LED_PIN_RED PB_11
-#define LED_PIN_GREEN PB_10
-#define LED_PIN_BLUE PB_1
-#include "lib/LED/LED_analogwrite.h"
+
+// #define LED_PIN_RED PB_11
+// #define LED_PIN_GREEN PB_10
+// #define LED_PIN_BLUE PB_1
+// #include "lib/LED/LED_analogwrite.h"
+
+#define LED_PIN PA_7
+#include "lib/LED/WS2812_NeoPixel.h"
 #define SerialNFC Serial1
 HardwareSerial Serial1(PB_7, PB_6);
 
@@ -120,11 +124,12 @@ PN532 nfc(pn532);
 #include <EEPROM.h>
 //EEPROM
 //1：系统设置，第0位保留，第1位是否开启高波特率，第二位是否开启LED，第三位是否启用AIC卡号映射，5、6、7三位代表使用的系统模式
-//系统模式（取上述三位拼出一个整数）：0为SEGA模式，1为SpiceTool模式，2为Namco模式，3为Test模式，4为RAW直通模式
 //2：LED亮度
 //3：固件版本号
 //4-11：被映射AIC卡号IDM
 //12-22：目标卡号
+//23:当前使用的系统模式：0为SEGA模式，1为SpiceTool模式，2为Namco模式，3为Test模式，4为RAW直通模式
+//24：该固件版本支持的系统模式，第0位代表sega模式，第1位代表Spicetool模式，2为Namco模式，3为Test模式，4为RAW直通模式，1有效
 uint8_t system_setting[3] = {0};
 uint8_t mapped_card_IDm[8] = {0};
 const uint8_t default_system_setting[3] = {0b00000110,128,8};
@@ -141,13 +146,17 @@ void EEPROM_get_sysconfig(){
   for(uint8_t i = 0;i<3;i++){
     system_setting[i] = EEPROM.read(i);
   }
-  if(system_setting[2] != default_system_setting[2]){
+  if(system_setting[2] != default_system_setting[2]){//固件版本号不同，刷入默认设置
     for(uint8_t i = 0;i<3;i++)  {
     EEPROM.write(i, default_system_setting[i]);
     system_setting[i] = default_system_setting[i];
     }
   }
-  system_mode = ((system_setting[0] & (0b11100000)) >> 5);
+  system_mode = EEPROM.read(23);
+  if(system_mode>4){
+    system_mode = 0;
+    EEPROM.write(23,0);
+  }
   #if defined(ESP8266)
   EEPROM.commit();
   #endif

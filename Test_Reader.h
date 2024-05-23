@@ -34,6 +34,7 @@ void Test_Reader_Loop()
     if(cmd_switch == 30){
       system_mode = 0;
       switch_flag = 1;
+      return;
     }
   }
    uint8_t uid[4], uL;
