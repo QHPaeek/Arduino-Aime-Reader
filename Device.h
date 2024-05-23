@@ -80,6 +80,7 @@ HardwareSerial SerialPN532(PF0, PF1);
 // #define LED_PIN_GREEN PB_10
 // #define LED_PIN_BLUE PB_1
 // #include "lib/LED/LED_analogwrite.h"
+//旧版使用共阳rgbLED
 
 #define LED_PIN PA_7
 #include "lib/LED/WS2812_NeoPixel.h"
