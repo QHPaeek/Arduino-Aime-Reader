@@ -28,6 +28,7 @@ message recv, _send;
 uint8_t cmd_switch;
 int pass_s0 = 0;
 bool zerohead = 0;
+uint8_t proc_status = 0;
 extern uint8_t switch_flag;
 
 void Namco_PN532_Setup(){
@@ -75,7 +76,7 @@ void Namco_PN532_Setup(){
     delay(40);
   }
   delay(250);
-  LED_show(255,0,0); // Send the updated pixel colors to the hardware.
+  LED_show(255,60,60); // Send the updated pixel colors to the hardware.
   delay(700);
   _send.initThis();
 }
@@ -231,7 +232,8 @@ void ledsvc()
         ledlasttim = millis();
         return;
       }
-      LED_show((uint8_t)(((float)1 - (float)fabs(((((float)millis() - (float)ledlasttim) / (float)1000) * (float)2) - (float)1)) * (float)255), 0, 0);
+      LED_show(255,0,0);
+      //LED_show((uint8_t)(((float)1 - (float)fabs(((((float)millis() - (float)ledlasttim) / (float)1000) * (float)2) - (float)1)) * (float)255), 0, 0);
     }
     if (ledext == 1)
     {
@@ -242,7 +244,8 @@ void ledsvc()
         ledlasttim = millis();
         return;
       }
-      LED_show(0, (uint8_t)(((float)1 - (float)fabs(((((float)millis() - (float)ledlasttim) / (float)1000) * (float)2) - (float)1)) * (float)255), 0);
+      //LED_show(0, (uint8_t)(((float)1 - (float)fabs(((((float)millis() - (float)ledlasttim) / (float)1000) * (float)2) - (float)1)) * (float)255), 0);
+      LED_show(0,255,0);
     }
     if (ledext == 2)
     {
@@ -253,8 +256,8 @@ void ledsvc()
         ledlasttim = millis();
         return;
       }
-
-      LED_show(0, 0, (uint8_t)(((float)1 - (float)fabs(((((float)millis() - (float)ledlasttim) / (float)1000) * (float)2) - (float)1)) * (float)255));
+      LED_show(0,0,255);
+      //LED_show(0, 0, (uint8_t)(((float)1 - (float)fabs(((((float)millis() - (float)ledlasttim) / (float)1000) * (float)2) - (float)1)) * (float)255));
     }
   }
   if (ledstat == 2)
@@ -267,12 +270,14 @@ void ledsvc()
     if (!ledext)
     {
       // ___---^^^
-      LED_show(0, 0, uint8_t((float(millis() - ledlasttim) / (float)500) * 255));
+      LED_show(0, 0, (float(millis() - ledlasttim) / (float)500) * 255);
+      //LED_show(0,0,255);
     }
     else if (ledext)
     {
       // ^^^---___
-      LED_show(0, 0, uint8_t(255 - (float(millis() - ledlasttim) / (float)500) * 255));
+      LED_show(0, 0, 255 - (float(millis() - ledlasttim) / (float)500) * 255);
+      //LED_show(0,0,255);
     }
   }
 }
@@ -344,8 +349,6 @@ void setLEDMode(uint8_t _mode) {
 
 }
 
-
-
 void proc()
 {
   if (recv.len == 0)
@@ -369,7 +372,6 @@ void proc()
     memcpy(_send.data, tempBuf, sizeof(tempBuf));
     to_pn532 = 0;
   }
-
   //BngRw Commands
   if (recv.getCommandCode() == 0x18)
   { //Command Code = 0x18(Unknown Command 0x18)
@@ -463,7 +465,6 @@ void proc()
     }
     if (recv.data[7] == 0x63) {
       //clear cardreading service
-
       _send.add_ack = 1;
       _send.len = 3;
       _send.all_len = 10;
@@ -474,7 +475,6 @@ void proc()
   }
   if (recv.getCommandCode() == 0x52)
   { //Command Code == 0x52(InRelease)
-
     for (int i = 0 ; i < recv.all_len; i++) {
       SerialNFC.write(recv.data[i]);
     }
@@ -500,10 +500,8 @@ void proc()
     }
     to_pn532 = 0;
   }
-
   if (recv.getCommandCode() == 0x44)
   { //Command Code == 0x44(InDeselect)
-
     for (int i = 0 ; i < recv.all_len; i++) {
       SerialNFC.write(recv.data[i]);
     }
@@ -529,8 +527,6 @@ void proc()
     }
     to_pn532 = 0;
   }
-
-
   if (recv.getCommandCode() == 0xA0)
   {
     //Command Code == 0xA0 ReadFelicaCardbySonyRCS620s?
@@ -548,7 +544,6 @@ void proc()
       SerialNFC.write(to_532_data[i]); // send to 532}
       //      Serial.write(to_532_data[i]);debug
     }
-
     uint8_t temp_532_data[0x30 + 7 + 6];
     int to_recv_532_len = 0x30 + 7 + 6;
     bool card_lost = 0 ;
@@ -592,16 +587,13 @@ void proc()
       SerialNFC.write(recv.data[i]);
     }
   }
-
-
   recv.initThis();
-
 }
 
 void doRecv() {
-
   if (SerialDevice.available())
   {
+    proc_status = 10;
     uint8_t recvByte = SerialDevice.read();
     if(recvByte == 0xaf){
       cmd_switch++;
@@ -625,18 +617,17 @@ void doRecv() {
       {
         recv.initThis();
       }
-    }
-    else
-    { //normal data
+    }else{ 
+      //normal data
       recv.data[recv.all_len++] = recvByte;
       if (recv.isReady())
       {
         proc();
       }
     }
+  }else{
+  proc_status --;
   }
-
-
 }
 
 void doSend() {
@@ -650,12 +641,10 @@ void doSend() {
       SerialDevice.write(_send.data[i]);
   }
   _send.initThis();
+  //proc_status = 0;
 }
-
 void Namco_Mode_Loop(){
-  ledsvc();
   doRecv();
-  doSend();
   if(cmd_switch == 30){
     system_mode = 0;
     switch_flag = 1;
@@ -665,6 +654,7 @@ void Namco_Mode_Loop(){
     #endif
     return;
   }
+  doSend();
   if (pass_s0) {
     while (SerialNFC.available() && pass_s0) {
       SerialNFC.read();
@@ -673,5 +663,8 @@ void Namco_Mode_Loop(){
   }
   else {
     while (SerialNFC.available())SerialDevice.write(SerialNFC.read());
+  }
+  if((!proc_status) && (!SerialDevice.available()) && (!SerialNFC.available())){
+    ledsvc();
   }
 }

@@ -1,8 +1,9 @@
-#include <string.h>
-
+#include "card_read.h"
 uint8_t KeyA[6], KeyB[6];
 extern uint8_t switch_flag;
 extern uint8_t system_mode;
+extern uint8_t AimeKey[6];
+extern uint8_t BanaKey[6];
 
 #define RETRY 10
 
@@ -69,29 +70,10 @@ enum {
   STATUS_COMP_DUMMY_3RD = 0x20,
 };
 
-struct mifare_card {
-  bool enable;
-  uint8_t block0[16]= {0xED,0x88,0xA1,0x5F,0x9B,0x88,0x04,0x00,0xC8,0x50,0x00,0x20,0x00,0x00,0x00,0x16};
-  uint8_t block1[16]= {0};
-  uint8_t block2[16]= {0};
-  uint8_t block3[16]= {0x57,0x43,0x43,0x46,0x76,0x32,0x70,0xF8,0x78,0x11,0x57,0x43,0x43,0x46,0x76,0x32};
-};
-struct mifare_card mifare_card_buffer;
-struct mifare_card bana_card_buffer;
-struct mifare_card card_reflect;
-
-struct felica_card {
-  bool enable;
-  uint8_t IDm[8]= {0};
-  uint8_t PMm[8]= {0};
-  union {
-    uint16_t SystemCode;
-    uint8_t System_Code[2];
-  };
-  uint8_t block[4][1][16]= {0};
-};
-
-struct felica_card felica_card_buffer;
+extern struct mifare_card aime_card_buffer;
+extern struct mifare_card bana_card_buffer;
+extern struct mifare_card card_reflect;
+extern struct nesica_card nesica_card_buffer;
 
 typedef union {
   uint8_t bytes[128];
@@ -195,65 +177,6 @@ packet_response_t res;
 uint8_t len, r, checksum;
 bool escape = false;
 
-void Sega_Mode_Init(){
-  if ((system_setting[0] & 0b10)){
-    SerialDevice.begin(115200);
-  }
-  else{
-    SerialDevice.begin(38400);
-  }
-  if(system_setting[0] & 0b1000)
-  {
-    for(uint8_t i = 0;i<8;i++)
-    {
-      mapped_card_IDm[i] = EEPROM.read(i+4);
-    }
-    for(uint8_t i = 0;i<10;i++)
-    {
-      card_reflect.block2[i+6] = EEPROM.read(i+12);
-    }
-  }
-  LED_Init();
-  nfc.begin();
-  while (!nfc.getFirmwareVersion()) {
-    delay(500);
-    SerialDevice.println("Didn't find PN53x board");
-    if((system_setting[0] & 0b100)){
-      LED_show(system_setting[1],0x00,0x00);
-    }
-  }
-  nfc.setPassiveActivationRetries(0x10);
-  nfc.SAMConfig();
-  memset(req.bytes, 0, sizeof(req.bytes));
-  memset(res.bytes, 0, sizeof(res.bytes));
-  if(!(system_setting[0] & 0b100)){
-    LED_buffer[0] = 0;
-    LED_buffer[1] = 0;
-    LED_buffer[2] = 0;
-  }
-  else if (system_setting[0] & 0b10){
-    LED_buffer[0] = 0;
-    LED_buffer[1] = 0;
-    LED_buffer[2] = system_setting[1];
-
-  }
-  else{
-    LED_buffer[0] = 0;
-    LED_buffer[1] = system_setting[1];
-    LED_buffer[2] = 0;
-  }
-}
-
-void LED_refresh()
-{
-  if (!(system_setting[0] & 0b100)){
-    LED_show(0,0,0);
-  }
-  else{
-    LED_show((uint8_t)LED_buffer[0],(uint8_t)LED_buffer[1],(uint8_t)LED_buffer[2]);
-  }
-}
-
 uint8_t packet_read() {
   while (SerialDevice.available()) {
     r = SerialDevice.read();
@@ -324,20 +247,18 @@ void sys_to_normal_mode() {
     res.status = STATUS_INVALID_COMMAND;
   } else {
     res.status = STATUS_INTERNAL_ERROR;
-    LED_buffer[0] = system_setting[1];
-    LED_buffer[1] = 0;
-    LED_buffer[2] = 0;
+    LED_show(255,0,0);
   }
 }
 
 void sys_get_fw_version() {
   if(system_setting[0] & 0b10){
-    const char fw_version[2] = "\x94";
+    char fw_version[2] = "\x94";
     res_init(sizeof(fw_version) - 1);
     memcpy(res.version, fw_version, res.payload_len);
   }
   else{
-    const char fw_version[24] = "TN32MSEC003S F/W Ver1.2";
+    char fw_version[24] = "TN32MSEC003S F/W Ver1.2";
     res_init(sizeof(fw_version) - 1);
     memcpy(res.version, fw_version, res.payload_len);
   }
@@ -345,12 +266,13 @@ void sys_get_fw_version() {
 
 void sys_get_hw_version() {
   if(system_setting[0] & 0b10){
-    const char hw_version[10] = "837-15396";
+    char hw_version[10] = "837-15396";
+    //char hw_version[10] = "837-15286";
     res_init(sizeof(hw_version) - 1);
     memcpy(res.version, hw_version, res.payload_len);
   }
   else{
-    const char hw_version[24] = "TN32MSEC003S H/W Ver3.0";
+    char hw_version[24] = "TN32MSEC003S H/W Ver3.0";
     res_init(sizeof(hw_version) - 1);
     memcpy(res.version, hw_version, res.payload_len);
   }
@@ -359,12 +281,12 @@ void sys_get_hw_version() {
 
 void sys_get_led_info() {
   if(system_setting[0] & 0b10){
-    const char led_info[13] = "000-00000\xFF\x11\x40";
+    char led_info[13] = "000-00000\xFF\x11\x40";
     res_init(sizeof(led_info) - 1);
     memcpy(res.version, led_info, res.payload_len);
   }
   else{
-    const char led_info[10] = "15084\xFF\x10\x00\x12";
+    char led_info[10] = "15084\xFF\x10\x00\x12";
     res_init(sizeof(led_info) - 1);
     memcpy(res.version, led_info, res.payload_len);
   }
@@ -383,25 +305,33 @@ void nfc_stop_polling() {
 
 void nfc_card_detect() {
   card_reflect.enable = false;
-  mifare_card_buffer.enable = false;
+  aime_card_buffer.enable = false;
   bana_card_buffer.enable = false;
+  nesica_card_buffer.enable = false;
   uint8_t bufferLength;
   uint16_t SystemCode;
-  uint8_t AimeKey[6] = {0x57, 0x43, 0x43, 0x46, 0x76, 0x32};
-  uint8_t BanaKey[6] = {0x60, 0x90, 0xD0, 0x06, 0x32, 0xF5};
-  if(nfc.readPassiveTargetID(PN532_MIFARE_ISO14443A, res.mifare_uid, &res.id_len) && nfc.mifareclassic_AuthenticateBlock(res.mifare_uid,res.id_len, 1, 1, BanaKey) && nfc.mifareclassic_ReadDataBlock(1, bana_card_buffer.block1)){
+  if(Nesica_Read(&nesica_card_buffer)){
+    nesica_card_buffer.enable = true;
+    memcpy(res.mifare_uid,nesica_card_buffer.uid,4);
+    //取UID前4字节
+    res.id_len = 4;
+    res_init(0x07);
+    res.count = 1;
+    res.type = 0x10;
+    return;
+  }else if(nfc.readPassiveTargetID(PN532_MIFARE_ISO14443A, res.mifare_uid, &res.id_len) && nfc.mifareclassic_AuthenticateBlock(res.mifare_uid,res.id_len, 1, 0, BanaKey) && nfc.mifareclassic_ReadDataBlock(0, bana_card_buffer.block0) && nfc.mifareclassic_ReadDataBlock(1, bana_card_buffer.block1) && nfc.mifareclassic_ReadDataBlock(2, bana_card_buffer.block2) && nfc.mifareclassic_ReadDataBlock(3, bana_card_buffer.block3)){
     bana_card_buffer.enable = true;
     res_init(0x07);
     res.count = 1;
     res.type = 0x10;
     return;
-  } else if (nfc.readPassiveTargetID(PN532_MIFARE_ISO14443A, res.mifare_uid, &res.id_len) && nfc.mifareclassic_AuthenticateBlock(res.mifare_uid,res.id_len, 1, 1, AimeKey) && nfc.mifareclassic_ReadDataBlock(2, mifare_card_buffer.block2)){
-    mifare_card_buffer.enable = true;
+  } else if (nfc.readPassiveTargetID(PN532_MIFARE_ISO14443A, res.mifare_uid, &res.id_len) && nfc.mifareclassic_AuthenticateBlock(res.mifare_uid,res.id_len, 1, 1, AimeKey) && nfc.mifareclassic_ReadDataBlock(2, aime_card_buffer.block2)){
+    aime_card_buffer.enable = true;
     res_init(0x07);
     res.count = 1;
     res.type = 0x10;
     return;
-  } else if (nfc.felica_Polling(0xFFFF, 0x00, res.IDm, res.PMm, &SystemCode, 200) == 1) {
+  }else if(nfc.felica_Polling(0xFFFF, 0x00, res.IDm, res.PMm, &SystemCode, 200) == 1) {
     if(system_setting[0] & 0b1000)
     { 
       bool card_judge = true;
@@ -443,14 +373,14 @@ void nfc_card_detect() {
 
 void nfc_mifare_authorize_a() {
   res_init();
-  if ((card_reflect.enable == false) && (mifare_card_buffer.enable == false) && (bana_card_buffer.enable == false)) {
+  if ((card_reflect.enable == false) && (aime_card_buffer.enable == false) && (bana_card_buffer.enable == false) && (nesica_card_buffer.enable == false)) {
     res.status = STATUS_CARD_ERROR;
   }
 }
 
 void nfc_mifare_authorize_b() {
   res_init();
-  if ((card_reflect.enable == false) && (mifare_card_buffer.enable == false) && (bana_card_buffer.enable == false)) {
+  if ((card_reflect.enable == false) && (aime_card_buffer.enable == false) && (bana_card_buffer.enable == false) && (nesica_card_buffer.enable == false)) {
     res.status = STATUS_CARD_ERROR;
   }
 }
@@ -467,7 +397,6 @@ void nfc_mifare_read() {
         break;
       case 2:
         memcpy(res.block,card_reflect.block2,16);
-        
         break;
       case 3:
         memcpy(res.block,card_reflect.block3,16);
@@ -478,40 +407,36 @@ void nfc_mifare_read() {
         break;
     }
     return;
-  }
-  else if (mifare_card_buffer.enable){
-      switch(req.block_no){
-      case 0:
-        memcpy(res.block,mifare_card_buffer.block0,16);
-        break;
-      case 1:
-        memcpy(res.block,mifare_card_buffer.block1,16);
-        break;
-      case 2:
-        memcpy(res.block,mifare_card_buffer.block2,16);
-        //mifare_card_buffer.enable = false;
-        break;
-      case 3:
-        memcpy(res.block,mifare_card_buffer.block3,16);
-        break;
-      default:
-        res_init();
-        res.status = STATUS_CARD_ERROR;
-        break;
+  }else if (aime_card_buffer.enable){
+    switch(req.block_no){
+    case 0:
+      memcpy(res.block,aime_card_buffer.block0,16);
+      break;
+    case 1:
+      memcpy(res.block,aime_card_buffer.block1,16);
+      break;
+    case 2:
+      memcpy(res.block,aime_card_buffer.block2,16);
+      break;
+    case 3:
+      memcpy(res.block,aime_card_buffer.block3,16);
+      break;
+    default:
+      res_init();
+      res.status = STATUS_CARD_ERROR;
+      break;
     }
-  }
-  else if (bana_card_buffer.enable){
-      switch(req.block_no){
+    return;
+  }else if (bana_card_buffer.enable){
+    switch(req.block_no){
       case 0:
         memcpy(res.block,bana_card_buffer.block0,16);
         break;
       case 1:
         memcpy(res.block,bana_card_buffer.block1,16);
-        //bana_card_buffer.enable = false;
         break;
       case 2:
         memcpy(res.block,bana_card_buffer.block2,16);
-        
         break;
       case 3:
         memcpy(res.block,bana_card_buffer.block3,16);
@@ -521,8 +446,32 @@ void nfc_mifare_read() {
         res.status = STATUS_CARD_ERROR;
         break;
     }
-  }
-  else if(!nfc.mifareclassic_ReadDataBlock(req.block_no, res.block)) {
+    return;
+  }else if(nesica_card_buffer.enable){  
+    switch(req.block_no){
+      case 0:
+        memcpy(res.block,aime_card_buffer.block0,16);
+        //直接把aime的拿过来用
+        break;
+      case 1:
+        memset(res.block,0,16);
+        break;
+      case 2:
+        memset(res.block,0,16);
+        for(uint8_t i = 0;i<8;i++){
+          res.block[i+8] = (nesica_card_buffer.card_serial[2*i] - 0x30)<<4 | (nesica_card_buffer.card_serial[2*i+1] - 0x30);
+        }
+        break;
+      case 3:
+        memcpy(res.block,aime_card_buffer.block3,16);
+        break;
+      default:
+        res_init();
+        res.status = STATUS_CARD_ERROR;
+        break;
+    }
+    return;
+  }else if(!nfc.mifareclassic_ReadDataBlock(req.block_no, res.block)){
     res_init();
     res.status = STATUS_CARD_ERROR;
   }
@@ -596,7 +545,6 @@ void nfc_felica_through() {
 }
 
 void Sega_Mode_Loop(){
-  LED_refresh();
   switch (packet_read()) {
       case 0:
         break;
@@ -651,9 +599,7 @@ void Sega_Mode_Loop(){
 
     // LED
       case CMD_EXT_BOARD_LED_RGB:
-        LED_buffer[0] = req.color_payload[0]?system_setting[1]:0;
-        LED_buffer[1] = req.color_payload[1]?system_setting[1]:0;
-        LED_buffer[2] = req.color_payload[2]?system_setting[1]:0;
+        LED_show(req.color_payload[0] , req.color_payload[1] , req.color_payload[2]);
         break;
 
       case CMD_EXT_BOARD_INFO:
@@ -712,19 +658,10 @@ void Sega_Mode_Loop(){
         #endif
         SerialDevice.begin((system_setting[0] & 0b10)? 115200 : 38400);
         if (system_setting[0] & 0b10){
-         LED_buffer[0] = 0;
-         LED_buffer[1] = 0;
-         LED_buffer[2] = system_setting[1];
+         LED_show(0,0,255);
          }
         else{
-          LED_buffer[0] = 0;
-          LED_buffer[1] = system_setting[1];
-          LED_buffer[2] = 0;
-        }
-        if(!(system_setting[0] & 0b100)){
-         LED_buffer[0] = 0;
-         LED_buffer[1] = 0;
-         LED_buffer[2] = 0;
+          LED_show(0,255,0);
         }
         delay(1);
         res_init();
@@ -752,4 +689,41 @@ void Sega_Mode_Loop(){
         break;
   }
   packet_write();
+}
+void Sega_Mode_Init(){
+  if ((system_setting[0] & 0b10)){
+    SerialDevice.begin(115200);
+  }
+  else{
+    SerialDevice.begin(38400);
+  }
+  if(system_setting[0] & 0b1000)
+  {
+    for(uint8_t i = 0;i<8;i++)
+    {
+      mapped_card_IDm[i] = EEPROM.read(i+4);
+    }
+    for(uint8_t i = 0;i<10;i++)
+    {
+      card_reflect.block2[i+6] = EEPROM.read(i+12);
+    }
+  }
+  LED_Init();
+  nfc.begin();
+  while (!nfc.getFirmwareVersion()) {
+    delay(500);
+    SerialDevice.println("Didn't find PN53x board");
+    LED_show(255,0,0);
+
+  }
+  nfc.setPassiveActivationRetries(0x10);
+  nfc.SAMConfig();
+  memset(req.bytes, 0, sizeof(req.bytes));
+  memset(res.bytes, 0, sizeof(res.bytes));
+  if (system_setting[0] & 0b10){
+    LED_show(0,0,255);
+  }
+  else{
+    LED_show(0,255,0);
+  }
 }

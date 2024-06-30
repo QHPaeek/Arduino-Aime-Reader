@@ -18,5 +18,8 @@ void RAW_Loop(){
       return;
     }
     SerialNFC.write(c);
+    while(SerialNFC.available()){
+      SerialDevice.write(SerialNFC.read());
+    }
   }
 }

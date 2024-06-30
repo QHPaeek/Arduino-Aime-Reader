@@ -1,11 +1,19 @@
 #include "lib/Spicetool/connection.h"
-spiceapi::Connection CON(1024);
+spiceapi::Connection CON(512);
 extern uint8_t system_mode;
 extern uint8_t switch_flag;
 
+char hex2str(uint8_t hex){
+  //注意这里传输的必须是半字节
+  if(hex < 0xA){
+    return (hex + 48);//ascii 0 = 48
+  }
+  else{
+    return (hex - 0xA + 65);//ascii A = 65
+  }
+}
 void Spice_Mode_Init(){
   SerialDevice.begin(115200);
-  //spiceapi::Connection CON(512);
   LED_Init();
   nfc.begin();
   while (!nfc.getFirmwareVersion()) {
@@ -17,14 +25,12 @@ void Spice_Mode_Init(){
   }
   nfc.setPassiveActivationRetries(0x10);
   nfc.SAMConfig();
-  LED_buffer[0] = 0;
-  LED_buffer[1] = 0;
-  LED_buffer[2] = system_setting[1];
-
+  LED_show(255,0,64);
+  delay(1000);
 }
 
-void Spicetool_Mode_Loop(){
-  LED_show(255,0,64);
+void Spice_Mode_Loop(){
+  LED_show(0,0,0);
   uint16_t SystemCode;
   char card_id[17];
   uint8_t cmd_switch = 0;
@@ -52,36 +58,55 @@ void Spicetool_Mode_Loop(){
   if (nfc.readPassiveTargetID(PN532_MIFARE_ISO14443A, mifare_uid, &id_len)
       && nfc.mifareclassic_AuthenticateBlock(mifare_uid, id_len, 1, 1, AimeKey)
       && nfc.mifareclassic_ReadDataBlock(2, block)) {
-    // sprintf(card_id, "%02X%02X%02X%02X%02X%02X%02X%02X",
-    //         block[8], block[9], block[10], block[11],
-    //         block[12], block[13], block[14], block[15]);
-    // spiceapi::card_insert(CON, 0, card_id);
-    char buffer[90];
-    sprintf(buffer, "{\"id\":1,\"module\":\"card\",\"function\":\"insert\",\"params\":[0,\"%02X%02X%02X%02X%02X%02X%02X%02X\"]}",
-      block[8], block[9], block[10], block[11],
-      block[12], block[13], block[14], block[15]
-    );
+    LED_show(0,255,0);
+    char hex2str_buffer[2] = {0,0};
+    char buffer[90] = "{\"id\":1,\"module\":\"card\",\"function\":\"insert\",\"params\":[0,\"E00401AF87654321\"]}";//应为E00401开头
+    if(system_setting[0] & 0b100000){ //开启了传入真实卡号
+      for(uint8_t i = 0;i<8;i++){
+        buffer[57+2*i] = hex2str(block[8+i] >> 4);//高4位转换为字符
+        buffer[58+2*i] = hex2str(block[8+i] & 0xF);//低4位转换为字符
+      }
+    }else{
+      for(uint8_t i = 0;i<4;i++){
+        buffer[65+2*i] = hex2str(mifare_uid[i] >> 4);
+        buffer[66+2*i] = hex2str(mifare_uid[i] & 0xF);
+      }
+    }
+    if(system_setting[0] & 0b1000000){//开启了2P刷卡
+      buffer[54] = 49;
+    }
     CON.request(buffer);
-    // SerialDevice.print(buffer);
+    delay(100);
+  }else if(nfc.readPassiveTargetID(PN532_MIFARE_ISO14443A, mifare_uid, &id_len) && nfc.mifareclassic_AuthenticateBlock(mifare_uid, id_len, 1, 0, BanaKey)){
+    LED_show(0,255,0);
+    char hex2str_buffer[2] = {0,0};
+    char buffer[90] = "{\"id\":1,\"module\":\"card\",\"function\":\"insert\",\"params\":[0,\"E00401AF87654321\"]}";//应为E00401开头
+    for(uint8_t i = 0;i<4;i++){
+      buffer[65+2*i] = hex2str(mifare_uid[i] >> 4);
+      buffer[66+2*i] = hex2str(mifare_uid[i] & 0xF);
+    }
+    if(system_setting[0] & 0b1000000){//开启了2P刷卡
+      buffer[54] = 49;
+    }
+    CON.request(buffer);
+    delay(100);
   }
   uint8_t IDm[8] = {0};
   uint8_t PMm[8] = {0};
-  if (nfc.felica_Polling(0xFFFF, 0x01, IDm, PMm, &SystemCode, 200)) {
-    // sprintf(card_id, "%02X%02X%02X%02X%02X%02X%02X%02X",
-    //         IDm[0], IDm[1], IDm[2], IDm[3],
-    //         IDm[4], IDm[5], IDm[6], IDm[7]);
-    // spiceapi::card_insert(CON, 0, card_id);
-    char buffer[90];
-    sprintf(buffer, "{\"id\":1,\"module\":\"card\",\"function\":\"insert\",\"params\":[0,\"%02X%02X%02X%02X%02X%02X%02X%02X\"]}",
-      IDm[0], IDm[1], IDm[2], IDm[3],
-      IDm[4], IDm[5], IDm[6], IDm[7]
-    );
+  if (nfc.felica_Polling(0xFFFF, 0x01, IDm, PMm, &SystemCode, 200) == 1) {
+    LED_show(0,0,255);
+    char buffer[90] = "{\"id\":1,\"module\":\"card\",\"function\":\"insert\",\"params\":[0,\"1234567887654321\"]}";
+    char hex2str_buffer[2] = {0,0};
+    for(uint8_t i = 0;i<8;i++){
+      buffer[57+2*i] = hex2str(IDm[i] >> 4);//高4位转换为字符
+      buffer[58+2*i] = hex2str(IDm[i] & 0xF);//低4位转换为字符
+    }
+    if(system_setting[0] & 0b1000000){//开启了2P刷卡
+      buffer[54] = 49;
+    }
     CON.request(buffer);
-    // SerialDevice.print(buffer);
+    delay(100);
   }
-  // spiceapi::InfoAvs avs_info{};
-  // if (spiceapi::info_avs(CON, avs_info)) {
-  //spiceapi::card_insert(CON, 0, "1111111111111111");
-  //   LED_show(system_setting[1],0,0);
-  // }
+  // char light_cmd_buffer[58] = "{\"id\":3,\"module\":\"lights\",\"function\":\"read\",\"params\":[]}"
+  // CON.request(light_cmd_buffer);
 }

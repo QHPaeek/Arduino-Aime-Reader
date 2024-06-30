@@ -60,21 +60,24 @@ HardwareSerial SerialPN532(PF0, PF1);
 #define SerialDevice Serial
 #define SPICEAPI_INTERFACE Serial
 #define BOARD_VISION 6
+
 #define LED_PIN_RED PB11
 #define LED_PIN_GREEN PB10
 #define LED_PIN_BLUE PB1
 #include "lib/LED/LED_analogwrite.h"
+//旧版使用共阳LED
+
+// #define NUM_LEDS 11
+// #include "lib/LED/WS2812_STM32F1.h"
+//新版使用WS2812
 #define SerialNFC Serial1
 
-#elif defined(ARDUINO_GENERIC_F072C8TX)
+#elif defined(ARDUINO_GENERIC_F072CBTX)
 #pragma message "当前的开发板是 STM32F072C8"
 //Generic STM32F1 series
 #define SerialDevice Serial
 #define SPICEAPI_INTERFACE Serial
 #define BOARD_VISION 7
-// #define LED_PIN_RED PB_1
-// #define LED_PIN_GREEN PB_11
-// #define LED_PIN_BLUE PB_10
 
 // #define LED_PIN_RED PB_11
 // #define LED_PIN_GREEN PB_10
@@ -84,6 +87,9 @@ HardwareSerial SerialPN532(PF0, PF1);
 
 #define LED_PIN PA_7
 #include "lib/LED/WS2812_NeoPixel.h"
+//#include "lib/LED/WS2812_FastLed.h"
+//新版使用WS2812
+
 #define SerialNFC Serial1
 HardwareSerial Serial1(PB_7, PB_6);
 
@@ -124,18 +130,18 @@ PN532 nfc(pn532);
 
 #include <EEPROM.h>
 //EEPROM
-//1：系统设置，第0位保留，第1位是否开启高波特率，第二位是否开启LED，第三位是否启用AIC卡号映射，5、6、7三位代表使用的系统模式
+//1：系统设置，第0位保留，第1位是否开启高波特率，第二位是否开启LED，第三位是否启用AIC卡号映射，第四位是否开启读卡兼容,第五位SPICE模式是否使用真实卡号
+//第六位表示SPICE模式是否使用2P刷卡
+//读卡兼容：在sega与spice模式下增加对nesica(mifare ultralight)的支持(暂定，后续可能会增加其他卡片的支持)
+//SPICE模式下默认使用UID作为卡号，如果开启了使用真实卡号，将尝试传入aime卡的真实卡号。部分版本SPICE可能会报错，不接受卡号
 //2：LED亮度
 //3：固件版本号
 //4-11：被映射AIC卡号IDM
 //12-22：目标卡号
 //23:当前使用的系统模式：0为SEGA模式，1为SpiceTool模式，2为Namco模式，3为Test模式，4为RAW直通模式
-//24：该固件版本支持的系统模式，第0位代表sega模式，第1位代表Spicetool模式，2为Namco模式，3为Test模式，4为RAW直通模式，1有效
 uint8_t system_setting[3] = {0};
 uint8_t mapped_card_IDm[8] = {0};
-const uint8_t default_system_setting[3] = {0b00000110,128,8};
-//LED灯颜色缓冲区，每次循环根据缓冲区颜色刷一次灯。
-uint8_t LED_buffer[3] = {0};
+const uint8_t default_system_setting[3] = {0b00000100,128,90};
 extern uint8_t system_mode;
 
 void EEPROM_get_sysconfig(){

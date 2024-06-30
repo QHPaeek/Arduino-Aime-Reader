@@ -606,15 +606,15 @@ for(uint8_t i =0;i<26;i++){
 	uart_send_buffer[27] += uart_send_buffer[i+1];
 }
 DWORD bytes_written;
-OVERLAPPED overlapped = {0};
-overlapped.hEvent = CreateEvent(NULL, TRUE, FALSE, NULL);
-if (!WriteFile(hPort, uart_send_buffer, 28, &bytes_written, &overlapped))
-{
-        GetOverlappedResult(hPort, &overlapped, &bytes_written, TRUE);
-}
-CloseHandle(overlapped.hEvent);
-//WriteFile(hPort, uart_send_buffer,28, &bytes_written, NULL);
-//Sleep(1);
+//OVERLAPPED overlapped = {0};
+//overlapped.hEvent = CreateEvent(NULL, TRUE, FALSE, NULL);
+//if (!WriteFile(hPort, uart_send_buffer, 28, &bytes_written, &overlapped))
+//{
+//        GetOverlappedResult(hPort, &overlapped, &bytes_written, TRUE);
+//}
+//CloseHandle(overlapped.hEvent);
+WriteFile(hPort, uart_send_buffer,28, &bytes_written, NULL);
+Sleep(3);
  // 等待串口数据发送完成
 // 改变串口波特率
     if (change_highbaudrate_mode)

@@ -1,9 +1,12 @@
+extern uint8_t system_setting[3];
 void LED_show(uint8_t r, uint8_t g,uint8_t b)
 {
-	analogWrite(LED_PIN_RED,r);
-	analogWrite(LED_PIN_GREEN,g);
-	analogWrite(LED_PIN_BLUE,b);
-	return;
+	if(system_setting[0] & 0b100){
+		analogWrite(LED_PIN_RED,(uint8_t)r*system_setting[1]/255);
+		analogWrite(LED_PIN_GREEN,(uint8_t)g*system_setting[1]/255);
+		analogWrite(LED_PIN_BLUE,(uint8_t)b*system_setting[1]/255);
+		return;
+	}
 }
 void LED_Init()
 {	

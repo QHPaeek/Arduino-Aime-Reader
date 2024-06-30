@@ -1,4 +1,25 @@
 #include "SPI.h"
+extern uint8_t system_setting[3];
+
+#define LED_DIFF_COUNT 10//LED的最小变化数值
+uint8_t LED_buffer[3];
+
+bool LED_filtering(uint8_t R, uint8_t G, uint8_t B){
+	if((LED_buffer[0] > R) &&((LED_buffer[0] - R) < LED_DIFF_COUNT)){
+		return 0;
+	}else if((LED_buffer[0] < R) &&((R - LED_buffer[0]) < LED_DIFF_COUNT)){
+		return 0;
+	}else if((LED_buffer[1] > G) &&((LED_buffer[1] - G) < LED_DIFF_COUNT)){
+		return 0;
+	}else if((LED_buffer[1] < G) &&((G - LED_buffer[1]) < LED_DIFF_COUNT)){
+		return 0;
+	}else if((LED_buffer[2] > B) &&((LED_buffer[2] - B) < LED_DIFF_COUNT)){
+		return 0;
+	}else if((LED_buffer[2] < B) &&((B - LED_buffer[2]) < LED_DIFF_COUNT)){
+		return 0;
+	}
+	return 1;
+}
 
 void WS2812_send(uint8_t r, uint8_t g, uint8_t b) {
   unsigned char bits = 24;
@@ -27,11 +48,15 @@ void WS2812_send(uint8_t r, uint8_t g, uint8_t b) {
 
 void LED_show(uint8_t r, uint8_t g,uint8_t b)
 {
-  for(uint8_t i = 0; i < NUM_LEDS ; i++)
-  {
-    WS2812_send(r, g, b);
-  }
-  delayMicroseconds(60);
+	if(!LED_filtering(R,G,B)){
+		return;//颜色未变化，跳过发送
+	}
+	else if(system_setting[0] & 0b100){
+  		for(uint8_t i = 0; i < NUM_LEDS ; i++){
+    			WS2812_send((uint8_t)r*system_setting[1]/255, (uint8_t)g*system_setting[1]/255, (uint8_t)b*system_setting[1]/255);
+  		}
+  	delayMicroseconds(60);
+	}
 }
 
 void LED_Init(){
@@ -43,6 +68,6 @@ void LED_Init(){
   // 16/2=8MHz
   SPI.setClockDivider(SPI_CLOCK_DIV2);
   delay(10);
-  //刷新一下所有灯的状态，函数见文档接下来的内容
+  //刷新一下所有灯的状态
   LED_show(0,0,0);
 }

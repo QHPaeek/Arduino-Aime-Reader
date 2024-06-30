@@ -18,6 +18,8 @@
 uint8_t switch_flag = 0;
 uint8_t system_mode = 0;
 
+void (*ReaderMain)();
+
 void setup() {
 
   #if defined(ARDUINO_ARCH_RP2040)
@@ -35,7 +37,6 @@ void setup() {
   afio_remap(AFIO_REMAP_USART1); 
   #endif
   EEPROM_get_sysconfig();
-  //system_mode = 2;
   switch(system_mode){
     #if defined (SEGA_MODE)
     case 0:
@@ -69,7 +70,6 @@ void setup() {
     #endif
       break;
   }
-  //LED_show(0,0,255);
 }
 
 void loop() {
@@ -97,7 +97,6 @@ void loop() {
         break;
     }
   }
-  //system_mode = 2;
   switch(system_mode){
     #if defined (SEGA_MODE)
     case 0:
@@ -109,7 +108,7 @@ void loop() {
     #endif
     #if defined (SPICE_MODE)
     case 1:
-      Spicetool_Mode_Loop();
+      Spice_Mode_Loop();
       break;
     #endif
     #if defined (NAMCO_MODE)
@@ -130,5 +129,4 @@ void loop() {
     #endif
       break;
   }
-    
 }
