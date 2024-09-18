@@ -23,7 +23,7 @@ bool LED_filtering(uint8_t R, uint8_t G, uint8_t B){
 }
 //namco模式下对读卡器反应时间要求非常高，呼吸灯会消耗大量时间用于刷灯，需要进行一定程度的过滤来减缓时间压力，否则游戏会认为读卡器已经断开连接
 
-void LED_show(uint8_t r, uint8_t g,uint8_t b)
+void LED_show(uint8_t R, uint8_t G,uint8_t B)
 {
 	if(!LED_filtering(R,G,B)){
 		return;//颜色未变化，跳过发送

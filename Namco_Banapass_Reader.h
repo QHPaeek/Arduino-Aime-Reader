@@ -633,7 +633,7 @@ void doRecv() {
 void doSend() {
   if (_send.isReady()) {
     if (_send.add_ack) {
-      uint8_t str[10] = {0x00, 0x00, 0xFF, 0x00, 0xFF, 0x00};
+      uint8_t str[6] = {0x00, 0x00, 0xFF, 0x00, 0xFF, 0x00};
       for (int i = 0; i < 6; i++)
         SerialDevice.write((byte)str[i]);
     }

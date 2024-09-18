@@ -111,8 +111,14 @@ typedef union {
             uint8_t numService;
             uint8_t serviceCodeList[2];
             uint8_t numBlock;
-            uint8_t blockList[1][2];  // CMD_FELICA_THROUGH_READ
-            uint8_t blockData[16];    // CMD_FELICA_THROUGH_WRITE
+            union{
+              uint8_t blockList[4][2];  // CMD_FELICA_THROUGH_READ
+              struct{
+                uint8_t blockList_write[1][2];  
+                uint8_t blockData[16];    // CMD_FELICA_THROUGH_WRITE
+              };
+
+            };
           };
           uint8_t felica_payload[1];
         };
@@ -162,8 +168,9 @@ typedef union {
           struct {
             uint8_t RW_status[2];
             uint8_t numBlock;
-            uint8_t blockData[1][1][16];
+            uint8_t blockData[4][16];
           };
+          //uint8_t RW_status_write[2];
           uint8_t felica_payload[1];
         };
       };
@@ -244,7 +251,8 @@ void res_init(uint8_t payload_len = 0) {
 void sys_to_normal_mode() {
   res_init();
   if (nfc.getFirmwareVersion()) {
-    res.status = STATUS_INVALID_COMMAND;
+    res.status = STATUS_OK;
+    res.seq_no = 0;
   } else {
     res.status = STATUS_INTERNAL_ERROR;
     LED_show(255,0,0);
@@ -254,6 +262,7 @@ void sys_to_normal_mode() {
 void sys_get_fw_version() {
   if(system_setting[0] & 0b10){
     char fw_version[2] = "\x94";
+    //char fw_version[2] = "\x92";
     res_init(sizeof(fw_version) - 1);
     memcpy(res.version, fw_version, res.payload_len);
   }
@@ -511,17 +520,17 @@ void nfc_felica_through() {
       }
       break;
     case FelicaReadWithoutEncryptData:
-      {
-        uint16_t serviceCodeList[1] = {0x000B};
+       {
+        uint8_t retry=0;
+        uint16_t serviceCodeList = req.serviceCodeList[1] << 8 | req.serviceCodeList[0];
+        uint16_t blockList[4];
         for (uint8_t i = 0; i < req.numBlock; i++) {
-          uint16_t blockList[1] = { (uint16_t)(req.blockList[i][0] << 8 | req.blockList[i][1]) };
-          uint8_t check = 0;
-          while(nfc.felica_ReadWithoutEncryption(1, serviceCodeList, 1, blockList, res.blockData[i]) != 1) {
-            check++;
-            if(check == RETRY){
-              memset(res.blockData[i], 0, 16);
-              break;
-            }
+          blockList[i] = (uint16_t)(req.blockList[i][0] << 8 | req.blockList[i][1]);
+        }
+        while(nfc.felica_ReadWithoutEncryption(1, &serviceCodeList, req.numBlock, blockList, res.blockData) != 1){
+          retry++;
+          if(retry == RETRY){
+            break;
           }
         }
         res.RW_status[0] = 0;
@@ -532,9 +541,17 @@ void nfc_felica_through() {
       break;
     case FelicaWriteWithoutEncryptData:
       {
-        res_init(0x0C);  // WriteWithoutEncryption,ignore
+        int8_t result = 0;
+        uint16_t serviceCodeList = req.serviceCodeList[1] << 8 | req.serviceCodeList[0];
+        uint16_t blockList = (uint16_t)(req.blockList_write[0][0] << 8 | req.blockList_write[0][1]);
+        result = nfc.felica_WriteWithoutEncryption(1, &serviceCodeList, 1, &blockList, &req.blockData);
+        res_init(0x0C);
         res.RW_status[0] = 0;
         res.RW_status[1] = 0;
+        if(result != 1){
+          LED_show(0,255,0);
+          res.status = STATUS_CARD_ERROR;
+        }
       }
       break;
     default:
@@ -551,11 +568,19 @@ void Sega_Mode_Loop(){
       case CMD_TO_NORMAL_MODE:
         sys_to_normal_mode();
         break;
+      case CMD_TO_UPDATER_MODE:
+        res_init();
+        res.status = STATUS_OK;
+        break;
       case CMD_GET_FW_VERSION:
         sys_get_fw_version();
         break;
       case CMD_GET_HW_VERSION:
         sys_get_hw_version();
+        break;
+      case CMD_SEND_HEX_DATA:
+        res_init();
+        res.status = STATUS_COMP_DUMMY_3RD;
         break;
 
     // Card read
@@ -685,7 +710,7 @@ void Sega_Mode_Loop(){
         
       default:
         res_init();
-        res.status = STATUS_INVALID_COMMAND;
+        res.status = STATUS_OK;
         break;
   }
   packet_write();
@@ -709,10 +734,11 @@ void Sega_Mode_Init(){
     }
   }
   LED_Init();
+  //afio_remap(AFIO_REMAP_USART1); 
   nfc.begin();
   while (!nfc.getFirmwareVersion()) {
     delay(500);
-    SerialDevice.println("Didn't find PN53x board");
+    SerialDevice.println("error");
     LED_show(255,0,0);
 
   }

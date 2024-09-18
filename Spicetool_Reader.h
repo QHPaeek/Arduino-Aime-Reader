@@ -18,7 +18,7 @@ void Spice_Mode_Init(){
   nfc.begin();
   while (!nfc.getFirmwareVersion()) {
     delay(500);
-    SerialDevice.println("Didn't find PN53x board");
+    SerialDevice.println("error");
     if((system_setting[0] & 0b100)){
       LED_show(system_setting[1],0x00,0x00);
     }
@@ -102,7 +102,7 @@ void Spice_Mode_Loop(){
       buffer[58+2*i] = hex2str(IDm[i] & 0xF);//低4位转换为字符
     }
     if(system_setting[0] & 0b1000000){//开启了2P刷卡
-      buffer[54] = 49;
+      buffer[54] = 49;//"params\":[1,......
     }
     CON.request(buffer);
     delay(100);

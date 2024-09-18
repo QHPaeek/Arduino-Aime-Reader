@@ -51,10 +51,14 @@ HardwareSerial SerialPN532(PF0, PF1);
 #define SerialNFC SerialPN532
 
 #elif defined(_BOARD_GENERIC_STM32F103C_H_)
-#pragma message "当前的开发板是 STM32F103C6"
-#define EEPROM_PAGE_SIZE        (uint16)0x400  /* Page size = 1KByte */
+#pragma message "当前的开发板是 STM32F103C"
+//for f103c8/B
+// #define EEPROM_PAGE_SIZE        (uint16)0x400  /* Page size = 1KByte */
+// #define FLASH_SIZE 64
+//for f103c6
+#define EEPROM_PAGE_SIZE        (uint16)0x200  /* Page size = 1KByte */
 #define FLASH_SIZE 32
-#define EEPROM_START_ADDRESS    ((uint32)(0x8000000 + FLASH_SIZE * 1024 - 2 * EEPROM_PAGE_SIZE))
+#define EEPROM_START_ADDRESS    ((uint32)(0x8000000 + FLASH_SIZE * 1024 - 1 * EEPROM_PAGE_SIZE))
 #define EEPROM_PAGE0_BASE               ((uint32)(EEPROM_START_ADDRESS + 0x000))
 #define EEPROM_PAGE1_BASE               ((uint32)(EEPROM_START_ADDRESS + EEPROM_PAGE_SIZE))
 #define SerialDevice Serial
@@ -130,7 +134,7 @@ PN532 nfc(pn532);
 
 #include <EEPROM.h>
 //EEPROM
-//1：系统设置，第0位保留，第1位是否开启高波特率，第二位是否开启LED，第三位是否启用AIC卡号映射，第四位是否开启读卡兼容,第五位SPICE模式是否使用真实卡号
+//1：系统设置，第0位保留，第1位是否开启高波特率，第二位是否开启LED，第三位是否启用AIC卡号映射，第四位是否开启扩展读卡,第五位SPICE模式是否使用真实卡号
 //第六位表示SPICE模式是否使用2P刷卡
 //读卡兼容：在sega与spice模式下增加对nesica(mifare ultralight)的支持(暂定，后续可能会增加其他卡片的支持)
 //SPICE模式下默认使用UID作为卡号，如果开启了使用真实卡号，将尝试传入aime卡的真实卡号。部分版本SPICE可能会报错，不接受卡号
@@ -141,7 +145,7 @@ PN532 nfc(pn532);
 //23:当前使用的系统模式：0为SEGA模式，1为SpiceTool模式，2为Namco模式，3为Test模式，4为RAW直通模式
 uint8_t system_setting[3] = {0};
 uint8_t mapped_card_IDm[8] = {0};
-const uint8_t default_system_setting[3] = {0b00000100,128,90};
+const uint8_t default_system_setting[3] = {0b00000100,128,10};
 extern uint8_t system_mode;
 
 void EEPROM_get_sysconfig(){

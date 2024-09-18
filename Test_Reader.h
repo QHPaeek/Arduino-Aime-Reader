@@ -1,19 +1,10 @@
-typedef union {
-  uint8_t block[18];
-  struct {
-    uint8_t IDm[8];
-    uint8_t PMm[8];
-    union {
-      uint16_t SystemCode;
-      uint8_t System_Code[2];
-    };
-  };
-} Card;
-Card card;
+uint8_t IDm[8];
+uint8_t PMm[8];
+uint16_t SystemCode;
 
-const uint16_t blockList[4] = {0x8080, 0x8081, 0x8082, 0x8083};
-const uint16_t serviceCodeList[1] = {0x000B};
-uint8_t blockData[1][16];
+// const uint16_t blockList[4] = {0x8082,0x8086,0x8090,0x8091};
+// const uint16_t serviceCodeList[1] = {0x000b};
+uint8_t block[16];
 extern uint8_t switch_flag;
 
 void Test_Reader_Loop()
@@ -45,8 +36,8 @@ void Test_Reader_Loop()
     SerialDevice.print("UID Value:");
     nfc.PrintHex(uid, uL);
     SerialDevice.print("Block 2 Data:");
-    if (nfc.mifareclassic_ReadDataBlock(2, card.block)) {
-      nfc.PrintHex(card.block, 16);
+    if (nfc.mifareclassic_ReadDataBlock(2, block)) {
+      nfc.PrintHex(block, 16);
     }
     delay(1000);
     return;
@@ -56,21 +47,21 @@ void Test_Reader_Loop()
     SerialDevice.print("UID Value:");
     nfc.PrintHex(uid, uL);
     SerialDevice.print("Block 0 Data:");
-    if (nfc.mifareclassic_ReadDataBlock(0, card.block)) {
-      nfc.PrintHex(card.block, 16);
-    }
-    SerialDevice.print("Block 1 Data:");
-    if (nfc.mifareclassic_ReadDataBlock(1, card.block)) {
-      nfc.PrintHex(card.block, 16);
-    }
-    SerialDevice.print("Block 2 Data:");
-    if (nfc.mifareclassic_ReadDataBlock(2, card.block)) {
-      nfc.PrintHex(card.block, 16);
-    }
-    SerialDevice.print("Block 3 Data:");
-    if (nfc.mifareclassic_ReadDataBlock(3, card.block)) {
-      nfc.PrintHex(card.block, 16);
-    }
+    // if (nfc.mifareclassic_ReadDataBlock(0, card.block)) {
+    //   nfc.PrintHex(card.block, 16);
+    // }
+    // SerialDevice.print("Block 1 Data:");
+    // if (nfc.mifareclassic_ReadDataBlock(1, card.block)) {
+    //   nfc.PrintHex(card.block, 16);
+    // }
+    // SerialDevice.print("Block 2 Data:");
+    // if (nfc.mifareclassic_ReadDataBlock(2, card.block)) {
+    //   nfc.PrintHex(card.block, 16);
+    // }
+    // SerialDevice.print("Block 3 Data:");
+    // if (nfc.mifareclassic_ReadDataBlock(3, card.block)) {
+    //   nfc.PrintHex(card.block, 16);
+    // }
      delay(1000);
      return;
     }
@@ -78,38 +69,53 @@ void Test_Reader_Loop()
     SerialDevice.println("Default Key Mifare!");
     SerialDevice.print("UID Value:");
     nfc.PrintHex(uid, uL);
-    SerialDevice.print("Block 2 Data:");
-    if (nfc.mifareclassic_ReadDataBlock(2, card.block)) {
-      nfc.PrintHex(card.block, 16);
-    }
+    // SerialDevice.print("Block 2 Data:");
+    // if (nfc.mifareclassic_ReadDataBlock(2, card.block)) {
+    //   nfc.PrintHex(card.block, 16);
+    // }
     delay(1000);
     return;
   }
-    if (nfc.readPassiveTargetID(PN532_MIFARE_ISO14443A, uid, &uL)) {
-      SerialDevice.println("Unknown key Mifare.");
-      SerialDevice.print("UID Value:");
-      nfc.PrintHex(uid, uL);
-      delay(1000);
-      return;
-   }
-   if (nfc.felica_Polling(0xFFFF, 0x01, card.IDm, card.PMm, &card.SystemCode, 200) == 1) {
+  //   if (nfc.readPassiveTargetID(PN532_MIFARE_ISO14443A, uid, &uL)) {
+  //     SerialDevice.println("Unknown key Mifare.");
+  //     SerialDevice.print("UID Value:");
+  //     nfc.PrintHex(uid, uL);
+  //     delay(1000);
+  //     return;
+  //  }
+   if (nfc.felica_Polling(0xFFFF, 0x01, IDm, PMm, &SystemCode, 200) == 1) {
       SerialDevice.println("FeliCa card!");
       SerialDevice.print("IDm:");
-      nfc.PrintHex(card.IDm, 8);
+      nfc.PrintHex(IDm, 8);
       SerialDevice.print("PMm:");
-      nfc.PrintHex(card.PMm, 8);
-      SerialDevice.print("SystemCode:");
-      card.SystemCode = card.SystemCode >> 8 | card.SystemCode << 8;
-      nfc.PrintHex(card.System_Code, 2);
-      Serial.println("FeliCa Block:");
-      for (uint8_t i = 0; i < 4; i++) {
-        if (nfc.felica_ReadWithoutEncryption(1, serviceCodeList, 1, &blockList[i], blockData) == 1) {
-          Serial.println(blockList[i], HEX);
-          nfc.PrintHex(blockData[0], 16);
-        } else {
-          Serial.println("error");
-        }
-      }
+      nfc.PrintHex(PMm, 8);
+      // SerialDevice.print("SystemCode:");
+      // card.SystemCode = card.SystemCode >> 8 | card.SystemCode << 8;
+      // nfc.PrintHex(card.System_Code, 2);
+      // uint8_t write_data[16];
+      // for(uint8_t i=0;i<16;i++){
+      //   write_data[i] = random(0,256);
+      // }
+      // Serial.println("RC Write to FeliCa Block 8080:");
+      // nfc.PrintHex(write_data, 16);
+      // uint16_t serviceCodeList1 = 0x0009;
+      // uint16_t blocklist1 = 0x8080;
+      // nfc.felica_WriteWithoutEncryption(1, &serviceCodeList1, 1, &blocklist1, &write_data);
+      // uint16_t blockList_sp[4] = {0x8082,0x8086,0x8090,0x8091};
+      // uint8_t blockdata_sp[4][16];
+      // int8_t result = nfc.felica_ReadWithoutEncryption(1, serviceCodeList,4 , blockList_sp, blockData);
+      // Serial.println("FeliCa Block:");
+      // //int8_t result = nfc.felica_ReadWithoutEncryption(1, serviceCodeList, 4, blockList, blockData);
+      // for (uint8_t i = 0; i < sizeof(blockList)/2; i++) {
+      //   if (result == 1) {
+      //     Serial.println(blockList[i], HEX);
+      //     nfc.PrintHex(blockData[i], 16);
+      //   } else{
+      //     Serial.println(blockList[i], HEX);
+      //     Serial.print("error!");
+      //     Serial.println(result, HEX);
+      //   }
+      // }
       delay(1000);
       return;
     }

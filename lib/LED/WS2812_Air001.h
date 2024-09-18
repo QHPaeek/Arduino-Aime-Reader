@@ -48,7 +48,7 @@ void WS2812_send(uint8_t r, uint8_t g, uint8_t b) {
 
 void LED_show(uint8_t r, uint8_t g,uint8_t b)
 {
-	if(!LED_filtering(R,G,B)){
+	if(!LED_filtering(r,g,b)){
 		return;//颜色未变化，跳过发送
 	}
 	else if(system_setting[0] & 0b100){

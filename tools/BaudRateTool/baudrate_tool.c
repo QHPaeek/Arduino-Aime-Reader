@@ -337,15 +337,9 @@ while(1)
 	while(!WriteFile(hPort, mode_rst_cmd, 30, NULL, NULL));
 	change_baudrate(HIGH_BAUDRATE);
 	while(!WriteFile(hPort, mode_rst_cmd, 30, NULL, NULL));
-//以两个不同波特率发30个0xff，即读卡器模式初始化命令，确保读卡器此时切换回sega模式
+//以两个不同波特率发30个0xaf，即读卡器模式初始化命令，确保读卡器此时切换回sega模式
     // 向COM4端口以115200波特率输出16进制数据E0 06 00 00 F6 00 00 FC，并且监听回复。
-    if (!send_data(8))
-    {
-        // 发送失败，关闭串口，等待用户按下任意键退出程序
-        close_port();
-        getch();
-        return -1;
-    }
+	WriteFile(hPort, send_buffer, 8, NULL, NULL);
     // 接收数据
     if (!recv_data(DATA_LENGTH))
     {
@@ -357,13 +351,7 @@ while(1)
             getch();
             return -1;
         }
-        if (!send_data(8))
-        {
-            // 发送失败，关闭串口，等待用户按下任意键退出程序
-            close_port();
-            getch();
-            return -1;
-        }
+	WriteFile(hPort, send_buffer, 8, NULL, NULL);
         if (!recv_data(DATA_LENGTH))
         {
             // 接收失败，关闭串口，等待用户按下任意键退出程序
@@ -526,6 +514,50 @@ if (mode_sw == 1){
         {
             // 不合法，提示用户”请重新输入!“
             printf("请重新输入!\n");
+        }
+    }
+    while (1)
+    {
+        // 获取用户输入
+        choice = get_user_input("是否启用扩展读卡？输入y启用，输入n不启用\n");
+        // 判断用户输入
+        if (choice == 'y' || choice == 'Y')
+        {
+            // 输入y或者Y，设置system_setting_buffer[0] 的第4位置1，跳出循环
+            system_setting_buffer[0] |= 0b10000;
+            break;
+        }
+        else if (choice == 'n' || choice == 'N')
+        {
+            // 输入n或者N，跳出循环
+            break;
+        }
+        else
+        {
+            // 输入其他内容，提示用户”请重新输入！“
+            printf("请重新输入！\n");
+        }
+    }
+    while (1)
+    {
+        // 获取用户输入
+        choice = get_user_input("是否在SPICE模式下进入2P刷卡模式（IIDX用）？输入y启用，输入n不启用\n");
+        // 判断用户输入
+        if (choice == 'y' || choice == 'Y')
+        {
+            // 输入y或者Y，设置system_setting_buffer[0] 的第4位置1，跳出循环
+            system_setting_buffer[0] |= 0b1000000;
+            break;
+        }
+        else if (choice == 'n' || choice == 'N')
+        {
+            // 输入n或者N，跳出循环
+            break;
+        }
+        else
+        {
+            // 输入其他内容，提示用户”请重新输入！“
+            printf("请重新输入！\n");
         }
     }
 uint8_t card_reflect = 0;
