@@ -12,7 +12,7 @@
 
 ### 使用方法：
 
-1. 安装库文件：按照 [PN532](https://github.com/elechouse/PN532) 的提示安装库，根据你选择的开发板安装FastLED或Neopixel
+1. 安装库文件：按照 [PN532](https://github.com/QHPaeek/PN532) 的提示安装库（此fork修复了felica读写，务必使用此fork)，根据你选择的开发板安装FastLED或Neopixel
 2. 按照`/PCB` 目录内对应硬件的使用方式，进入下载模式，同时将读卡器与电脑中间接好线，并调整 PN532 上的拨码开关(HSU模式)
 3. 上传[Arduino-Aime-Reader](Arduino-Aime-Reader.ino)，按照支持列表打开设备管理器设置 COM 端口号并设置好实际需要使用的波特率
 4. 进入Baudrate_tool确认读卡器硬件是否正确运行，并且根据你的游戏选择不同的模式
@@ -67,14 +67,13 @@
 
 ### 已知问题：
 
-- 在 NDA_08 命令的写入 Felica 操作没有实现，因为未确认是否会影响卡片后续使用
 - 未确定`res.status`错误码的定义，因此`res.status`的值可能是错误的
 - 因为 PN532 库不支持同时读取多张卡片，所以未实现`mifare_select_tag`，只会读到最先识别的卡片
 
 ### 引用库：
 
 - 驱动 WS2812B：[FastLED](https://github.com/FastLED/FastLED)或[Neopixel](https://github.com/adafruit/Adafruit_NeoPixel)
-- 驱动 PN532：[PN532](https://github.com/elechouse/PN532) 或 [Aime_Reader_PN532](https://github.com/Sucareto/Aime_Reader_PN532)
+- 驱动 PN532：[GitHub - QHPaeek/PN532: NFC library using PN532 to read/write card and communicate with android](https://github.com/QHPaeek/PN532)
 - 读取 FeliCa 参考：[PN532を使ってArduinoでFeliCa学生証を読む方法](https://qiita.com/gpioblink/items/91597a5275862f7ffb3c)
 - 读取 FeliCa 数据的程序：[NFC TagInfo](https://play.google.com/store/apps/details?id=at.mroland.android.apps.nfctaginfo)，[NFC TagInfo by NXP](https://play.google.com/store/apps/details?id=com.nxp.taginfolite)
 - Namco读卡器协议：[banapass_reader_pn532_](https://github.com/gyt4/banapass_reader_pn532)
