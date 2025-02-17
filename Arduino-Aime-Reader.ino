@@ -1,12 +1,11 @@
-//#define SEGA_MODE 1
-//#define SPICE_MODE 1
+#define SEGA_MODE 1
+#define SPICE_MODE 1
 #define NAMCO_MODE 1
-//#define Other_MODE 1
+#define Other_MODE 1
 
 #include "Device.h"
 #if defined (SEGA_MODE)
 #include "Sega_Aime_Reader.h"
-
 #endif
 #if defined (SPICE_MODE)
 #include "Spicetool_Reader.h"
@@ -22,8 +21,6 @@
 uint8_t switch_flag = 0;
 uint8_t system_mode = 0;
 
-void (*ReaderMain)();
-
 void setup() {
 
   #if defined(ARDUINO_ARCH_RP2040)
@@ -33,13 +30,25 @@ void setup() {
   Serial1.begin(115200);
   #elif defined(STM32F0)
   Serial.dtr(false); 
-  #elif defined(ESP32)
+  #elif defined(CONFIG_IDF_TARGET_ESP32)
   //EEPROM.commit();
+  #elif defined(CONFIG_IDF_TARGET_ESP32C3)
+  pinMode(sysled, OUTPUT);
+  pinMode(nfccommled, OUTPUT);
+  digitalWrite(sysled, 1);
+  digitalWrite(nfccommled, 0);
   #elif defined(_BOARD_GENERIC_STM32F103C_H_)
   afio_remap(AFIO_REMAP_TIM2_FULL);
   afio_remap(AFIO_REMAP_USART1); 
+  #elif defined(ARDUINO_SAMD_ZERO)
+  // SerialPN532.begin(115200);
+  // pinPeripheral(A1, PIO_SERCOM_ALT);
+  // pinPeripheral(A2, PIO_SERCOM_ALT);
   #endif
   EEPROM_get_sysconfig();
+  #if defined(CDC)
+  SerialDevice.begin(115200);
+  #endif
   switch(system_mode){
     #if defined (SEGA_MODE)
     case 0:
@@ -97,6 +106,8 @@ void loop() {
         break;
       #endif
       default:
+        Sega_Mode_Init();
+        switch_flag = 0;
         break;
     }
   }

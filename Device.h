@@ -1,3 +1,4 @@
+#include <stdlib.h>
 //#if defined(__AVR_ATmega32U4__)
 //#pragma message "当前的开发板是 ATmega32U4"
 //#define SerialDevice SerialUSB
@@ -7,16 +8,25 @@
 //#include "lib/WS2812_FastLed.h"
 //#define PN532_SPI_SS 10
 
-//#elif defined(ARDUINO_SAMD_ZERO)
-//#pragma message "当前的开发板是SAMD_ZERO"
-//#define SerialDevice SerialUSB
-//#define NUM_LEDS 11
-//#define LED_PIN A3
-//#define BOARD_VISION 2
-//#include "lib/WS2812_FastLed.h"
-//#define PN532_SPI_SS 10
+#if defined(ARDUINO_SAMD_ZERO)
+#define CDC
+#pragma message "当前的开发板是 SAMD21 "
+//#include "wiring_private.h"
+#define SerialDevice Serial
+#define SPICEAPI_INTERFACE Serial
+#define NUM_LEDS 11
+#define LED_PIN 4
+#define BOARD_VISION 2
+#include "lib/LED/WS2812_NeoPixel.h"
+// Uart SerialPN532(&sercom4, A2, A1, SERCOM_RX_PAD_1, UART_TX_PAD_0);
+// void SERCOM4_Handler()
+// {
+//   SerialPN532.IrqHandler();
+// }
+#define SerialNFC Serial1
+//please install FlashStorage library
 
-#if defined(ESP8266)
+#elif defined(ESP8266)
 #pragma message "当前的开发板是 ESP8266"
 #define SerialDevice Serial
 #define SPICEAPI_INTERFACE Serial
@@ -28,7 +38,7 @@
 #include "SoftwareSerial.h"
 SoftwareSerial SoftSerialNFC(4, 5); // RX, TX
 
-#elif defined(ESP32)
+#elif defined(CONFIG_IDF_TARGET_ESP32)
 #pragma message "当前的开发板是 ESP32"
 #define SerialDevice Serial
 #define SPICEAPI_INTERFACE Serial
@@ -51,32 +61,37 @@ HardwareSerial SerialPN532(PF0, PF1);
 #define SerialNFC SerialPN532
 
 #elif defined(_BOARD_GENERIC_STM32F103C_H_)
-#pragma message "当前的开发板是 STM32F103C"
+#define CDC
 //for f103c8/B
-// #define EEPROM_PAGE_SIZE        (uint16)0x400  /* Page size = 1KByte */
-// #define FLASH_SIZE 64
+#define EEPROM_PAGE_SIZE        (uint16)0x400  /* Page size = 1KByte */
+#pragma message "当前的开发板是 STM32F103C8"
+#define FLASH_SIZE 64
+
 //for f103c6
-#define EEPROM_PAGE_SIZE        (uint16)0x200  /* Page size = 1KByte */
-#define FLASH_SIZE 32
-#define EEPROM_START_ADDRESS    ((uint32)(0x8000000 + FLASH_SIZE * 1024 - 1 * EEPROM_PAGE_SIZE))
+//#pragma message "当前的开发板是 STM32F103C6"
+// #define EEPROM_PAGE_SIZE        (uint16)0x200  /* Page size = 1KByte */
+// #define FLASH_SIZE 32
+
+#define EEPROM_START_ADDRESS    ((uint32)(0x8000000 + FLASH_SIZE * 1024 - 2 * EEPROM_PAGE_SIZE))
 #define EEPROM_PAGE0_BASE               ((uint32)(EEPROM_START_ADDRESS + 0x000))
 #define EEPROM_PAGE1_BASE               ((uint32)(EEPROM_START_ADDRESS + EEPROM_PAGE_SIZE))
 #define SerialDevice Serial
 #define SPICEAPI_INTERFACE Serial
 #define BOARD_VISION 6
 
-#define LED_PIN_RED PB11
-#define LED_PIN_GREEN PB10
-#define LED_PIN_BLUE PB1
-#include "lib/LED/LED_analogwrite.h"
+// #define LED_PIN_RED PB11
+// #define LED_PIN_GREEN PB10
+// #define LED_PIN_BLUE PB1
+// #include "lib/LED/LED_analogwrite.h"
 //旧版使用共阳LED
 
-// #define NUM_LEDS 11
-// #include "lib/LED/WS2812_STM32F1.h"
+#define NUM_LEDS 11
+#include "lib/LED/WS2812_STM32F1.h"
 //新版使用WS2812
 #define SerialNFC Serial1
 
-#elif defined(ARDUINO_GENERIC_F072CBTX)
+#elif defined(ARDUINO_GENERIC_F072C8TX)
+#define CDC
 #pragma message "当前的开发板是 STM32F072C8"
 //Generic STM32F1 series
 #define SerialDevice Serial
@@ -98,6 +113,7 @@ HardwareSerial SerialPN532(PF0, PF1);
 HardwareSerial Serial1(PB_7, PB_6);
 
 #elif defined(ARDUINO_ARCH_RP2040)
+#define CDC
 #pragma message "当前的开发板是 RP2040"
 #define SerialDevice Serial
 #define SPICEAPI_INTERFACE Serial
@@ -113,6 +129,31 @@ HardwareSerial Serial1(PB_7, PB_6);
 //#define BOARD_VISION 9
 //#include "lib/WS2812_FastLed.h"
 
+#elif defined(CONFIG_IDF_TARGET_ESP32C3)
+#define CDC 1
+#pragma message "当前的开发板是 ESP32C3"
+#define SerialDevice Serial
+#define sysled 2
+#define nfccommled 3
+#define beeperpin 6
+#define NUM_LEDS 11
+#define LED_PIN 10
+#define BOARD_VISION 10
+#define SerialNFC Serial0
+#include "lib/LED/WS2812_FastLed.h"
+
+#elif defined(__AVR_ATtiny85__)
+#pragma message "当前的开发板是 ATtiny85"
+#define SerialDevice Serial
+#define SPICEAPI_INTERFACE Serial
+#define NUM_LEDS 11
+#define LED_PIN 0
+#define BOARD_VISION 11
+#include "lib/LED/WS2812_NeoPixel.h"
+#include <TinyPinChange.h>
+#include <SoftSerial.h>
+SoftSerial SoftSerialNFC(2, 1,false); // RX, TX
+
 #else
 #error "未经测试的开发板，请检查串口和针脚定义"
 
@@ -124,7 +165,11 @@ HardwareSerial Serial1(PB_7, PB_6);
 PN532_HSU pn532(SerialNFC);
 #else
 #pragma message "使用 SWUART 连接 PN532"
+#if defined(__AVR_ATtiny85__)
+#include <PN532_SWHSU_Tiny85.h>
+#else
 #include <PN532_SWHSU.h>
+#endif
 PN532_SWHSU pn532(SoftSerialNFC);
 #define SerialNFC SoftSerialNFC
 #endif
@@ -132,7 +177,11 @@ PN532_SWHSU pn532(SoftSerialNFC);
 #include "PN532.h"
 PN532 nfc(pn532);
 
+#if defined(ARDUINO_SAMD_ZERO)
+#include <FlashAsEEPROM.h>
+#else
 #include <EEPROM.h>
+#endif
 //EEPROM
 //1：系统设置，第0位保留，第1位是否开启高波特率，第二位是否开启LED，第三位是否启用AIC卡号映射，第四位是否开启扩展读卡,第五位SPICE模式是否使用真实卡号
 //第六位表示SPICE模式是否使用2P刷卡
@@ -151,6 +200,8 @@ extern uint8_t system_mode;
 void EEPROM_get_sysconfig(){
   #if defined(ESP8266)
   EEPROM.begin(32);
+  #elif defined(ESP32)
+  EEPROM.begin(32);
   #elif defined(_BOARD_GENERIC_STM32F103C_H_)
   EEPROM.init(EEPROM_PAGE0_BASE,EEPROM_PAGE1_BASE,EEPROM_PAGE_SIZE);
   #endif
@@ -162,13 +213,18 @@ void EEPROM_get_sysconfig(){
     EEPROM.write(i, default_system_setting[i]);
     system_setting[i] = default_system_setting[i];
     }
-  }
-  system_mode = EEPROM.read(23);
-  if(system_mode>4){
+    EEPROM.write(23, 0);
     system_mode = 0;
-    EEPROM.write(23,0);
+  }else{
+    system_mode = EEPROM.read(23);
+    if(system_mode>4){
+      system_mode = 0;
+      EEPROM.write(23,0);
+    }
   }
   #if defined(ESP8266)
+  EEPROM.commit();
+  #elif defined(ESP32)
   EEPROM.commit();
   #endif
 }

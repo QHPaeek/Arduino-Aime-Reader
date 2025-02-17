@@ -1,79 +1,64 @@
-/*
-库代码来自：https://github.com/spicetools/spicetools/tree/master/api/resources/arduino
-删除了未使用的函数。
-*/
 #ifndef SPICEAPI_CONNECTION_H
 #define SPICEAPI_CONNECTION_H
 
+#include <Arduino.h>
 #include <stdint.h>
 
 #ifndef SPICEAPI_INTERFACE
-#define SPICEAPI_INTERFACE Serial
+#define SPICEAPI_INTERFACE Serial  // 默认使用Serial
 #endif
 
-namespace spiceapi {
+#define BUFFER_SIZE 64
 
-class Connection {
-private:
-  uint8_t* receive_buffer;
-  size_t receive_buffer_size;
-
-public:
-  Connection(size_t receive_buffer_size);
-  void reset();
-  const char* request(char* json,size_t timeout = 1000);
-};
-}
-
-spiceapi::Connection::Connection(size_t receive_buffer_size) {
-  this->receive_buffer = new uint8_t[receive_buffer_size];
-  this->receive_buffer_size = receive_buffer_size;
-  this->reset();
-}
-
-void spiceapi::Connection::reset() {
-
+void reset() {
   // drop all input
   while (SPICEAPI_INTERFACE.available()) {
     SPICEAPI_INTERFACE.read();
   }
 }
 
-const char* spiceapi::Connection::request(char* json_data, size_t timeout) {
-  auto json_len = strlen(json_data) + 1;
+const char* spice_request(const char* json, size_t timeout,uint8_t* receive_buffer) {
+    // 清空缓冲区
+    memset(receive_buffer, 0, BUFFER_SIZE);
 
-  // send
-  auto send_result = SPICEAPI_INTERFACE.write((uint8_t *)json_data, (int)json_len);
-  SPICEAPI_INTERFACE.flush();
-  if (send_result < (int)json_len) {
-    return "";
-  }
+    // 发送请求（不带终止符）
+    size_t sent = SPICEAPI_INTERFACE.write((uint8_t*)json, strlen(json));
+    SPICEAPI_INTERFACE.write((uint8_t)0);
+    SPICEAPI_INTERFACE.flush();
+    if (sent != strlen(json)) return "";
 
-  // receive
-     size_t receive_data_len = 0;
-    auto t_start = millis();
-    while (SPICEAPI_INTERFACE) {
+    // 接收数据
+    size_t received = 0;
+    uint32_t t_start = millis();
+    
+    while (millis() - t_start < timeout) {
+        while (SPICEAPI_INTERFACE.available()) {
+            int b = SPICEAPI_INTERFACE.read();
+            if (b == -1) break;
 
-      // check for timeout
-      if (millis() - t_start > timeout) {
-          this->reset();
-          return "";
-      }
+            // 处理缓冲区溢出
+            if (received >= BUFFER_SIZE - 1) {
+                receive_buffer[BUFFER_SIZE - 1] = '\0';
+                reset();
+                return (const char*)receive_buffer;
+            }
 
-      // read single byte
-      auto b = SPICEAPI_INTERFACE.read();
-      if (b < 0) continue;
-      receive_buffer[receive_data_len++] = b;
+            receive_buffer[received++] = b;
 
-      // check for buffer overflow
-      if (receive_data_len >= receive_buffer_size) {
-          this->reset();
-          return "";
-      }
+            // 检测终止符（根据协议调整）
+            if (b == '\n' || b == '\0') {
+                receive_buffer[received] = '\0';
+                return (const char*)receive_buffer;
+            }
+        }
+        
+        // 短暂延时防止忙等待
+        delay(1);
     }
 
-  // return resulting json
-  return (const char*)&receive_buffer[0];
+    // 添加终止符后返回
+    receive_buffer[received] = '\0';
+    return (const char*)receive_buffer;
 }
 
-#endif  //SPICEAPI_CONNECTION_H
+#endif  // SPICEAPI_CONNECTION_H

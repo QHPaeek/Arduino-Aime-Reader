@@ -18,13 +18,13 @@
 4. 进入Baudrate_tool确认读卡器硬件是否正确运行，并且根据你的游戏选择不同的模式
 5. 打开游戏测试
 
-如果需要自定义 Aime 卡，安装 [MifareClassicTool](https://github.com/ikarus23/MifareClassicTool)，修改 [Aime 卡示例](doc/aime示例.mct) 后写入空白 MIFARE UID/CUID 卡，即可刷卡使用。    
-
-波特率的概念：正确运行读卡器需要游戏，计算机本地端口，以及读卡器三个地方的设置全部一致才可以。游戏内的波特率一般是不可更改的，计算机本地端口的波特率可以在设置管理器里面修改，读卡器的波特率请通过[baudrate_tool](tools/BaudRateTool/baudrate_tool.exe)进行修改。只有三个设置全部一致才可以使用。
+波特率：正确运行读卡器需要游戏以及读卡器的设置全部一致才可以。游戏内的波特率一般是固定的，读卡器的波特率请通过[baudrate_tool](tools/BaudRateTool/baudrate_tool.exe)进行修改。
 
 使用CDC虚拟串口连接计算机的读卡器（STM32），或具有自适应波特率功能的读卡器不需要修改读卡器波特率，因为CDC具有无视波特率的特性。
 
 ### 支持游戏：
+
+[点击前往教程地址](https://affinelab.notion.site/Aime-Manual-66c171d3fc144ae2bc4369d45000f0eb)
 
 **sega模式下：**
 
@@ -51,23 +51,24 @@
 
     遵循SpiceAPI。请在SpiceCfg.exe内将API Serial Port修改为实际使用的端口，将API     SerialBaud修改为115200。
 
-### 开发板适配情况：
+### 适配情况：
 
-| 开发板名                         | 主控                       | 备注                                 |
-| ---------------------------- | ------------------------ | ---------------------------------- |
-| SparkFun Pro Micro           | ATmega32U4               | 需要发送 DTR/RTS，未完全测试                 |
-| SparkFun SAMD21 Dev Breakout | ATSAMD21G18              | 未完全测试                              |
-| NodeMCU 1.0                  | ESP-12E + CP2102 & CH340 | CH340通讯，可能需要修改内部波特率                |
-| NodeMCU-32S                  | ESP32-S + CH340          | 未完全测试                              |
-| Arduino Uno                  | ATmega328P + CH340       | 可用，部分UNO板可能需要发送DTR/RTS，具体视实际使用硬件而定 |
-| Air001 Dev Chip              | Air001 + CH340           | CH340通讯，可能需要修改内部波特率                |
-| STM32  BulePill              | STM32F103C6T6/C8T6/CBT6  | 使用CDC链接,不需要修改波特率                   |
-| STM32  F072                  | STM32F072C8T6            | 使用CDC链接,不需要修改波特率，主要开发环境            |
-| Raspberry Pi Pico            | Raspberry RP2040         | 使用CDC链接,不需要修改波特率，未完全测试             |
+| 主控                 | PCB                                                                                                                    | 备注                                 |
+|:------------------:|:----------------------------------------------------------------------------------------------------------------------:|:----------------------------------:|
+| STM32F072C8T6      | [Kobato](https://github.com/QHPaeek/Arduino-Aime-Reader/tree/develop/hardware/STM32F103%26F072)                        | 使用CDC,主要开发环境                       |
+| STM32F103C6T6/C8T6 | [Kobato](https://github.com/QHPaeek/Arduino-Aime-Reader/tree/develop/hardware/STM32F103%26F072)                        | 使用CDC                              |
+| ESP8266 + CH340    | [Kobato-Lite](https://github.com/QHPaeek/Arduino-Aime-Reader/tree/develop/hardware/ESP8266%26air001)                   |                                    |
+| Air001 + CH340     | [Kobato-Lite](https://github.com/QHPaeek/Arduino-Aime-Reader/tree/develop/hardware/ESP8266%26air001)                   |                                    |
+| ESP32-C3           | [Kobato-Simple](https://github.com/QHPaeek/Arduino-Aime-Reader/tree/develop/hardware/ESP32C3MINI&26XIAO)+ESP32-C3 Mini | 使用CDC                              |
+| ATSAMD21G18        | [Kobato-Simple](https://github.com/QHPaeek/Arduino-Aime-Reader/tree/develop/hardware/ESP32C3MINI&26XIAO)+SAMD21 Xiao   | 使用CDC，未完全测试                        |
+| Raspberry RP2040   | [Kobato-Simple](https://github.com/QHPaeek/Arduino-Aime-Reader/tree/develop/hardware/ESP32C3MINI&26XIAO)+RP2040 Xiao   | 使用CDC，未完全测试                        |
+| ATmega32U4         | SparkFun Pro Micro                                                                                                     | 需要发送 DTR/RTS，未完全测试                 |
+| ESP32-S + CH340    | NodeMCU-32S                                                                                                            | 未完全测试                              |
+| ATmega328P + CH340 | Arduino Uno                                                                                                            | 可用，部分UNO板可能需要发送DTR/RTS，具体视实际使用硬件而定 |
 
 ### 已知问题：
 
-- 未确定`res.status`错误码的定义，因此`res.status`的值可能是错误的
+- 触发固件更新的逻辑不正确
 - 因为 PN532 库不支持同时读取多张卡片，所以未实现`mifare_select_tag`，只会读到最先识别的卡片
 
 ### 引用库：

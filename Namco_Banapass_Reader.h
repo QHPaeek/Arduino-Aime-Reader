@@ -33,7 +33,9 @@ extern uint8_t switch_flag;
 
 void Namco_PN532_Setup(){
   cmd_switch = 0;
+  #ifndef CDC
   SerialDevice.begin(38400);
+  #endif
   SerialNFC.begin(115200);
   LED_Init();
   const uint8_t startup532[] = {
@@ -75,6 +77,9 @@ void Namco_PN532_Setup(){
     tryCnt++;
     delay(40);
   }
+  #if defined(CONFIG_IDF_TARGET_ESP32C3)
+  digitalWrite(nfccommled, 1);
+  #endif
   delay(250);
   LED_show(255,60,60); // Send the updated pixel colors to the hardware.
   delay(700);

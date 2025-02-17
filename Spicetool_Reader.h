@@ -1,5 +1,6 @@
 #include "lib/Spicetool/connection.h"
-spiceapi::Connection CON(512);
+uint8_t spice_buffer[64];
+// spiceapi::Connection CON(spice_buffer,64);
 extern uint8_t system_mode;
 extern uint8_t switch_flag;
 
@@ -13,7 +14,9 @@ char hex2str(uint8_t hex){
   }
 }
 void Spice_Mode_Init(){
+  #ifndef CDC
   SerialDevice.begin(115200);
+  #endif
   LED_Init();
   nfc.begin();
   while (!nfc.getFirmwareVersion()) {
@@ -23,6 +26,9 @@ void Spice_Mode_Init(){
       LED_show(system_setting[1],0x00,0x00);
     }
   }
+  #if defined(CONFIG_IDF_TARGET_ESP32C3)
+  digitalWrite(nfccommled, 1);
+  #endif
   nfc.setPassiveActivationRetries(0x10);
   nfc.SAMConfig();
   LED_show(255,0,64);
@@ -75,10 +81,12 @@ void Spice_Mode_Loop(){
     if(system_setting[0] & 0b1000000){//开启了2P刷卡
       buffer[54] = 49;
     }
-    CON.request(buffer);
-    delay(100);
-  }else if(nfc.readPassiveTargetID(PN532_MIFARE_ISO14443A, mifare_uid, &id_len) && nfc.mifareclassic_AuthenticateBlock(mifare_uid, id_len, 1, 0, BanaKey)){
-    LED_show(0,255,0);
+    spice_request(buffer,1000,spice_buffer);
+    delay(1000);
+    return;
+  }
+  if(nfc.readPassiveTargetID(PN532_MIFARE_ISO14443A, mifare_uid, &id_len) && nfc.mifareclassic_AuthenticateBlock(mifare_uid, id_len, 1, 0, BanaKey)){
+    LED_show(255,0,0);
     char hex2str_buffer[2] = {0,0};
     char buffer[90] = "{\"id\":1,\"module\":\"card\",\"function\":\"insert\",\"params\":[0,\"E00401AF87654321\"]}";//应为E00401开头
     for(uint8_t i = 0;i<4;i++){
@@ -88,8 +96,9 @@ void Spice_Mode_Loop(){
     if(system_setting[0] & 0b1000000){//开启了2P刷卡
       buffer[54] = 49;
     }
-    CON.request(buffer);
-    delay(100);
+    spice_request(buffer,1000,spice_buffer);
+    delay(1000);
+    return;
   }
   uint8_t IDm[8] = {0};
   uint8_t PMm[8] = {0};
@@ -104,8 +113,9 @@ void Spice_Mode_Loop(){
     if(system_setting[0] & 0b1000000){//开启了2P刷卡
       buffer[54] = 49;//"params\":[1,......
     }
-    CON.request(buffer);
-    delay(100);
+    spice_request(buffer,1000,spice_buffer);
+    delay(1000);
+    return;
   }
   // char light_cmd_buffer[58] = "{\"id\":3,\"module\":\"lights\",\"function\":\"read\",\"params\":[]}"
   // CON.request(light_cmd_buffer);

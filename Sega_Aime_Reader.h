@@ -207,6 +207,9 @@ uint8_t packet_read() {
     }
     req.bytes[++len] = r;
     if (len == req.frame_len) {
+      if (req.cmd == CMD_SEND_BINDATA_EXEC){
+        return CMD_SEND_BINDATA_EXEC; 
+      }
       return checksum == r ? req.cmd : STATUS_SUM_ERROR;
     }
     checksum += r;
@@ -572,6 +575,9 @@ void Sega_Mode_Loop(){
         res_init();
         res.status = STATUS_OK;
         break;
+      case CMD_SEND_BINDATA_EXEC:
+        res_init();
+        res.status = STATUS_FIRM_UPDATE_SUCCESS;
       case CMD_GET_FW_VERSION:
         sys_get_fw_version();
         break;
@@ -680,8 +686,12 @@ void Sega_Mode_Loop(){
         }
         #if defined(ESP8266)
         EEPROM.commit();
+        #elif defined(ESP32)
+        EEPROM.commit();
         #endif
+        #ifndef CDC
         SerialDevice.begin((system_setting[0] & 0b10)? 115200 : 38400);
+        #endif
         if (system_setting[0] & 0b10){
          LED_show(0,0,255);
          }
@@ -697,6 +707,8 @@ void Sega_Mode_Loop(){
         if(req.mode != 3){
           EEPROM.write(23,system_mode);
           #if defined(ESP8266)
+          EEPROM.commit();
+          #elif defined(ESP32)
           EEPROM.commit();
           #endif
         }
@@ -716,12 +728,14 @@ void Sega_Mode_Loop(){
   packet_write();
 }
 void Sega_Mode_Init(){
+  #ifndef CDC
   if ((system_setting[0] & 0b10)){
     SerialDevice.begin(115200);
   }
   else{
     SerialDevice.begin(38400);
   }
+  #endif
   if(system_setting[0] & 0b1000)
   {
     for(uint8_t i = 0;i<8;i++)
@@ -740,8 +754,10 @@ void Sega_Mode_Init(){
     delay(500);
     SerialDevice.println("error");
     LED_show(255,0,0);
-
   }
+  #if defined(CONFIG_IDF_TARGET_ESP32C3)
+  digitalWrite(nfccommled, 1);
+  #endif
   nfc.setPassiveActivationRetries(0x10);
   nfc.SAMConfig();
   memset(req.bytes, 0, sizeof(req.bytes));
