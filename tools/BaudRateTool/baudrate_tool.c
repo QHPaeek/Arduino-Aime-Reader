@@ -464,6 +464,23 @@ void printColoredResult(BOOL isSuccess, char *message)
     }
 }
 
+// 打印超链接的函数，参数为URL和文本
+void printHyperlink(const char* url, const char* text) {
+    // 获取控制台的当前模式
+    DWORD mode;
+    GetConsoleMode(GetStdHandle(STD_OUTPUT_HANDLE), &mode);
+    
+    // 启用虚拟终端序列处理
+    SetConsoleMode(GetStdHandle(STD_OUTPUT_HANDLE), mode | ENABLE_VIRTUAL_TERMINAL_PROCESSING);
+    
+    // 输出带超链接的文本 (使用ESC序列)
+    printf("\x1b]8;;%s\x07%s\x1b]8;;\x07", url, text);
+    
+    // 恢复原来的控制台模式
+    SetConsoleMode(GetStdHandle(STD_OUTPUT_HANDLE), mode);
+}
+
+
 // 主函数
 int main()
 {
@@ -475,11 +492,14 @@ int main()
 
     printf("BaudRateTool V10 By Qinh\n");
     printf("本工具用于修改Kobato (Lite) 读卡器内部设置\n");
+    printf("源代码可见");
+    printHyperlink("https://github.com/QHPaeek/Arduino-Aime-Reader", "https://github.com/QHPaeek/Arduino-Aime-Reader");
+    printf("\n\n");
     printf("读卡器EEPROM寿命有限，请不要频繁修改！\n\n");
     int ports;
     while (1)
     {
-        ports = get_user_input_number("请输入读卡器的端口号（例如COM4请输入数字4），端口号可通过设备管理器查看\n按下回车继续：");
+        ports = get_user_input_number("请输入读卡器的端口号（例如COM4请输入数字4），端口号可通过设备管理器查看\n输入数字后请按下回车继续：");
         if (ports < 0)
         {
             printf("请输入有效的数字！");
